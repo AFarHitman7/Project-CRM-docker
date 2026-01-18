@@ -2,7 +2,6 @@ import styles from "./Dashboard.module.css";
 import BusinessTaxStatusCard from "./components/BusinessTaxStatusCard";
 import PersonalTaxStatusCard from "./components/PersonalTaxStatusCard";
 import TotalClientsCard from "./components/TotalClientsCard";
-import GenericCard from "./components/genericCard";
 import BirthdayCard from "./components/BirthdayCard";
 
 interface DashboardProps {
