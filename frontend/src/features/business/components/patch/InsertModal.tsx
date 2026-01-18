@@ -10,7 +10,7 @@ interface BusinessTaxForm {
   taxPeriod: string;
   amount: string;
   confirmationNumber: string;
-  status: "InProgress" | "ReadyForReview" | "PaperRecieved" | "FiledOn";
+  status: "PaperReceived" | "InProgress" | "ReadyForReview"|"FiledOn";
   taxDate: string;
   fromDate?: string;
   toDate?: string;

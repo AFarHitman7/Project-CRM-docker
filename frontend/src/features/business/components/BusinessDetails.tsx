@@ -274,6 +274,17 @@ export default function BusinessDetails() {
     taxProfiles.some((tp: any) => tp.tax_type === t)
   );
 
+  function toCamelCaseText(str = "") {
+  return str
+    .toString()
+    .trim()
+    .toLowerCase()
+    .split(/[\s_-]+/)           // split by space, _ or -
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
   return (
     <div className={styles.mainSection}>
       <div className={styles.cardSection}>
@@ -416,6 +427,7 @@ export default function BusinessDetails() {
                         primaryAddress.address_line2,
                       ]
                         .filter(Boolean)
+                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                     <br />
@@ -427,6 +439,7 @@ export default function BusinessDetails() {
                         primaryAddress.country,
                       ]
                         .filter(Boolean)
+                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                   </div>
@@ -445,6 +458,7 @@ export default function BusinessDetails() {
                         mailingAddress.address_line2,
                       ]
                         .filter(Boolean)
+                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                     <br />
@@ -456,8 +470,9 @@ export default function BusinessDetails() {
                         mailingAddress.country,
                       ]
                         .filter(Boolean)
+                        .map(toCamelCaseText)
                         .join(", ")}
-                    </span>
+                    </span> 
                   </div>
                 </Section>
               )}
