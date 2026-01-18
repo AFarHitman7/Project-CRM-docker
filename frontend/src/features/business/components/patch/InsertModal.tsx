@@ -820,34 +820,33 @@ export default function InsertBusinessResourceModal({
                       {/* Show Amount and Confirmation Number only when FiledOn */}
                       {(form.status === "FiledOn" ||
                         form.status === "ReadyForReview") && (
-                        <>
-                          <div className={styles.formField}>
-                            <label>Amount *</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              value={form.amount}
-                              onChange={(e) =>
-                                setForm({ ...form, amount: e.target.value })
-                              }
-                            />
-                          </div>
-
-                          <div className={styles.formField}>
-                            <label>Confirmation Number *</label>
-                            <input
-                              required
-                              value={form.confirmationNumber}
-                              onChange={(e) =>
-                                setForm({
-                                  ...form,
-                                  confirmationNumber: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </>
+                        <div className={styles.formField}>
+                          <label>Amount *</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={form.amount}
+                            onChange={(e) =>
+                              setForm({ ...form, amount: e.target.value })
+                            }
+                          />
+                        </div>
+                      )}
+                      {form.status === "FiledOn" && (
+                        <div className={styles.formField}>
+                          <label>Confirmation Number *</label>
+                          <input
+                            required
+                            value={form.confirmationNumber}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                confirmationNumber: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
                       )}
 
                       <div className={styles.formField}>

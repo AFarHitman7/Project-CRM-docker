@@ -33,10 +33,15 @@
   padding: 0.4rem 1rem;
   font-size: 0.7rem;
   border-radius: 0.8rem;
-  background-color: #f59e0b1a;
-  color: #f59e0b;
+  background-color: #5555551a;
+  color: #555;
   display: flex;
   width: fit-content;
+}
+
+.inprogress span {
+  background-color: #f59e0b1a;
+  color: #f59e0b;
 }
 
 .filedon span {
