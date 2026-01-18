@@ -39,7 +39,7 @@ interface Dependent {
 
 interface TaxRecord {
   taxYear: string;
-  status: "InProgress" | "ReadyToFile" | "FiledOn"|"PaperReceived";
+  status: "InProgress" | "ReadyToFile" | "FiledOn" | "PaperReceived";
   taxDate?: string;
   attachment?: string;
   preparedBy?: string;
@@ -1138,10 +1138,154 @@ export default function InsertModal({
               {/* STEP 2B: NEW CLIENT */}
               {spouseMode === "new" && (
                 <>
-                  {/* reuse your existing spouse form exactly */}
-                  {/* no changes needed except a back button */}
+                  {activeTab === "spouse" && (
+                    <div className={styles.tabContent}>
+                      <h3>Add New Spouse</h3>
 
-                  {/* ... existing spouse inputs ... */}
+                      <div className={styles.formRow}>
+                        <div className={styles.formField}>
+                          <label htmlFor="spouseFirstName">First Name *</label>
+                          <input
+                            id="spouseFirstName"
+                            placeholder="Given name"
+                            value={spouseForm.firstName}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                firstName: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className={styles.formField}>
+                          <label htmlFor="spouseLastName">Last Name *</label>
+                          <input
+                            id="spouseLastName"
+                            placeholder="Family name"
+                            value={spouseForm.lastName}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                lastName: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+
+                      <div className={styles.formRow}>
+                        <div className={styles.formField}>
+                          <label htmlFor="spouseDob">Date of Birth *</label>
+                          <input
+                            id="spouseDob"
+                            type="date"
+                            value={spouseForm.dob}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                dob: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className={styles.formField}>
+                          <label htmlFor="spouseGender">Gender</label>
+                          <select
+                            id="spouseGender"
+                            value={spouseForm.gender}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                gender: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          >
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="non-binary">Non-binary</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className={styles.formRow}>
+                        <div className={styles.formField}>
+                          <label htmlFor="spouseSin">SIN Number *</label>
+                          <input
+                            id="spouseSin"
+                            inputMode="numeric"
+                            maxLength={11}
+                            placeholder="123456789"
+                            value={spouseForm.sin}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                sin: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className={styles.formField}>
+                          <label htmlFor="spousePhone">Phone *</label>
+                          <input
+                            id="spousePhone"
+                            type="tel"
+                            inputMode="tel"
+                            placeholder="(416) 555-1234"
+                            value={spouseForm.phone}
+                            onChange={(e) =>
+                              setSpouseForm({
+                                ...spouseForm,
+                                phone: e.target.value,
+                              })
+                            }
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+
+                      <div className={styles.formField}>
+                        <label htmlFor="spouseEmail">Email *</label>
+                        <input
+                          id="spouseEmail"
+                          type="email"
+                          placeholder="name@example.com"
+                          value={spouseForm.email}
+                          onChange={(e) =>
+                            setSpouseForm({
+                              ...spouseForm,
+                              email: e.target.value,
+                            })
+                          }
+                          disabled={loading}
+                        />
+                      </div>
+
+                      <div className={styles.formField}>
+                        <label htmlFor="dateOfMarriage">
+                          Date of Marriage *
+                        </label>
+                        <input
+                          id="dateOfMarriage"
+                          type="date"
+                          value={spouseForm.dateOfMarriage}
+                          onChange={(e) =>
+                            setSpouseForm({
+                              ...spouseForm,
+                              dateOfMarriage: e.target.value,
+                            })
+                          }
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     className={styles.linkBack}
@@ -1190,15 +1334,14 @@ export default function InsertModal({
                             | "InProgress"
                             | "ReadyToFile"
                             | "FiledOn"
-                            | "PaperReceived"
-
+                            | "PaperReceived",
                         })
                       }
                       disabled={loading}
                     >
                       <option value="InProgress">InProgress</option>
                       <option value="ReadyToFile">ReadyToFile</option>
-                     <option value="PaperReceived">PaperReceived</option>
+                      <option value="PaperReceived">PaperReceived</option>
                       <option value="FiledOn">FiledOn</option>
                     </select>
                   </div>

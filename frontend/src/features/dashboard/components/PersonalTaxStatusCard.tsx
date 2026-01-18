@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import styles from "./TaxStatusCard.module.css";
+import styles from "./BusinessTaxStatusCard.module.css"; // Shared CSS
 import { IoPersonSharp } from "react-icons/io5";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -11,7 +11,6 @@ interface StatusCounts {
   paperReceivedPC: number;
 }
 
-// 1. Add interface for props
 interface Props {
   onStatusClick: (status: string) => void;
 }
@@ -31,32 +30,42 @@ const PersonalTaxStatusCard = ({ onStatusClick }: Props) => {
       .catch(() => {});
   }, []);
 
+  // Helper to render the status blocks with the shared styling
+  const renderBlock = (
+    label: string,
+    count: number,
+    type: "paper" | "progress" | "review" | "filed",
+    statusKey: string
+  ) => (
+    <div
+      className={`${styles.statusBlock} ${styles[type]}`}
+      onClick={() => onStatusClick(statusKey)}
+      style={{ cursor: "pointer" }} // Inline pointer since shared CSS might lack it for blocks
+    >
+      <span className={styles.statusLabel}>{label}</span>
+      <span className={styles.statusValue}>{count}</span>
+    </div>
+  );
+
   return (
     <div className={styles.card}>
       <header className={styles.header}>
-        <IoPersonSharp size={"1.2rem"} />
+        {/* Use headerIcon class to match the scaled-down size of the Business card */}
+        <IoPersonSharp className={styles.headerIcon} />
         <h3 className={styles.title}>Personal Tax Overview</h3>
       </header>
 
-      <div className={`${styles.list} ${styles.personalList}`}>
-        <div className={styles.row}>
-          <span
-            className={`${styles.statusBadge} ${styles.personalStatusBadge} ${styles.InProgress}`}
-            onClick={() => onStatusClick("InProgress")}
-          >
-            In Progress
-          </span>
-          <span className={styles.count}>{counts?.progressPC ?? 0}</span>
-        </div>
+      {/* Reuse the 'section' class for the border/padding look */}
+      <div className={styles.section}>
+        <div className={styles.grid}>
+          {renderBlock(
+            "InProgress",
+            counts?.progressPC ?? 0,
+            "progress",
+            "InProgress"
+          )}
 
-        <div className={styles.row}>
-          <span
-            className={`${styles.statusBadge} ${styles.personalStatusBadge} ${styles.FiledOn}`}
-            onClick={() => onStatusClick("FiledOn")}
-          >
-            Filed On
-          </span>
-          <span className={styles.count}>{counts?.filedOnPC ?? 0}</span>
+          {renderBlock("Filed", counts?.filedOnPC ?? 0, "filed", "FiledOn")}
         </div>
       </div>
     </div>

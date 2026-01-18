@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import styles from "./TaxStatusCard.module.css";
+import styles from "./BusinessTaxStatusCard.module.css";
 import { FaBriefcase } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -30,78 +30,68 @@ const BusinessTaxStatusCard = () => {
       .catch(() => {});
   }, []);
 
+  // Helper to render a single status block
+  const renderStatusBlock = (
+    label: string,
+    count: number,
+    type: "paper" | "progress" | "review" | "filed"
+  ) => (
+    <div className={`${styles.statusBlock} ${styles[type]}`}>
+      <span className={styles.statusLabel}>{label}</span>
+      <span className={styles.statusValue}>{count}</span>
+    </div>
+  );
+
   return (
     <div className={styles.card}>
       <header className={styles.header}>
-        <FaBriefcase size={"1.2rem"} />
-        <h3 className={styles.title}>Business Tax Status</h3>
+        <FaBriefcase className={styles.headerIcon} />
+        <h3 className={styles.title}>BusinessTax Overview</h3>
       </header>
 
       {/* HST SECTION */}
-      <div>
-        <div className={styles.sectionTitle}>HST</div>
-        <div className={styles.list}>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.InProgress}`}>
-              In Progress
-            </span>
-            <span className={styles.count}>{counts?.progressBC_HST ?? 0}</span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.PaperReceived}`}>
-              Paper Received
-            </span>
-            <span className={styles.count}>
-              {counts?.paperReceivedBC_HST ?? 0}
-            </span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.ReadyForReview}`}>
-              Ready For Review
-            </span>
-            <span className={styles.count}>{counts?.reviewBC_HST ?? 0}</span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.FiledOn}`}>
-              Filed On
-            </span>
-            <span className={styles.count}>{counts?.filedOnBC_HST ?? 0}</span>
-          </div>
+      <div className={styles.section}>
+        <h4 className={styles.sectionTitle}>HST Tax</h4>
+        <div className={styles.grid}>
+          {renderStatusBlock(
+            "PaperReceived",
+            counts?.paperReceivedBC_HST ?? 0,
+            "paper"
+          )}
+          {renderStatusBlock(
+            "InProgress",
+            counts?.progressBC_HST ?? 0,
+            "progress"
+          )}
+          {renderStatusBlock(
+            "ReadyForReview",
+            counts?.reviewBC_HST ?? 0,
+            "review"
+          )}
+          {renderStatusBlock("Filed", counts?.filedOnBC_HST ?? 0, "filed")}
         </div>
       </div>
 
-      <div className={styles.divider} />
-
       {/* CORPORATION SECTION */}
-      <div>
-        <div className={styles.sectionTitle}>Corporation</div>
-        <div className={styles.list}>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.InProgress}`}>
-              In Progress
-            </span>
-            <span className={styles.count}>{counts?.progressBC_CORP ?? 0}</span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.PaperReceived}`}>
-              Paper Received
-            </span>
-            <span className={styles.count}>
-              {counts?.paperReceivedBC_CORP ?? 0}
-            </span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.ReadyForReview}`}>
-              Ready For Review
-            </span>
-            <span className={styles.count}>{counts?.reviewBC_CORP ?? 0}</span>
-          </div>
-          <div className={styles.row}>
-            <span className={`${styles.statusBadge} ${styles.FiledOn}`}>
-              Filed On
-            </span>
-            <span className={styles.count}>{counts?.filedOnBC_CORP ?? 0}</span>
-          </div>
+      <div className={styles.section}>
+        <h4 className={styles.sectionTitle}>Corporation Tax</h4>
+        <div className={styles.grid}>
+          {renderStatusBlock(
+            "PaperReceived",
+            counts?.paperReceivedBC_CORP ?? 0,
+            "paper"
+          )}
+          {renderStatusBlock(
+            "InProgress",
+            counts?.progressBC_CORP ?? 0,
+            "progress"
+          )}
+          {renderStatusBlock(
+            "ReadyForReview",
+            counts?.reviewBC_CORP ?? 0,
+            "review"
+          )}
+          {renderStatusBlock("Filed", counts?.filedOnBC_CORP ?? 0, "filed")}
         </div>
       </div>
     </div>

@@ -231,13 +231,13 @@ td .buttonContainer {
 
 .editBtn {
   background-color: inherit;
-  color: #4a6fa5;
+  color: #1792e7;
   padding: 0.4rem 0.8rem;
 }
 
 .editBtn:hover {
   background-color: rgba(74, 111, 165, 0.1);
-  color: #1f3f66;
+  color: #1274b9;
 }
 
 .tableContainer {

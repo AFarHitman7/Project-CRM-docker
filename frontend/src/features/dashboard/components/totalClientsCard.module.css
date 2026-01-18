@@ -12,19 +12,19 @@
 
 .header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: end;
+  gap: 0.4rem;
+
   margin-bottom: 0.75rem; /* 12px → 9.6px */
 }
 
 .headerLeft {
   display: flex;
-  align-items: center;
   gap: 0.5rem;
 }
 
 .title {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   margin: 0;
   font-weight: 600;
   color: #111827;

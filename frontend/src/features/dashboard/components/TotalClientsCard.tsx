@@ -47,10 +47,8 @@ const TotalClientsCard = () => {
   return (
     <div className={styles.card}>
       <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <MdGroups size={"1.5rem"} />
-          <h3 className={styles.title}>Total Clients</h3>
-        </div>
+        <MdGroups size={"1.5rem"} />
+        <h3 className={styles.title}>Total Clients</h3>
       </header>
 
       <div className={styles.body}>

@@ -13,11 +13,11 @@
   margin-bottom: 16px;
   display: flex;
   gap: 0.4rem;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .title {
-  font-size: 1.125rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: #111827;
   margin: 0;

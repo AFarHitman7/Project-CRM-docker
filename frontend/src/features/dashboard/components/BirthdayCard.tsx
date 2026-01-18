@@ -94,7 +94,7 @@ const BirthdayCard: React.FC = () => {
   return (
     <div className={styles.card}>
       <header className={styles.header}>
-        <BsCalendar2DateFill size={"1.2rem"} />
+        <BsCalendar2DateFill size={"1rem"} />
         <h3 className={styles.title}>Calendar</h3>
       </header>
 
