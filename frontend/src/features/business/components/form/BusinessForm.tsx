@@ -768,28 +768,6 @@ export default function BusinessForm() {
                 <option value="true">Registered</option>
               </select>
             </div>
-            {payrollStatus && (
-              <div className={styles.formField}>
-                <label htmlFor="payrollStartingYear">Starting Year *</label>
-                <input
-                  id="payrollStartingYear"
-                  type="number"
-                  min="1900"
-                  max="2100"
-                  placeholder="2024"
-                  {...register("payrollStartingYear", {
-                    required: payrollStatus
-                      ? "Starting year is required"
-                      : false,
-                    validate: (v) => {
-                      if (!v) return true;
-                      const year = Number(v);
-                      return (year >= 1900 && year <= 2100) || "Invalid year";
-                    },
-                  })}
-                />
-              </div>
-            )}
           </div>
         </section>
 

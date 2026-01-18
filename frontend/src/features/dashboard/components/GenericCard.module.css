@@ -38,3 +38,8 @@
   gap: 2rem;
   color: #111827;
 }
+
+.body button {
+  color: unset;
+  background-color: unset;
+}
