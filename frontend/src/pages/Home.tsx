@@ -1,4 +1,3 @@
-// import Dashboard from "../features/dashboard/Dashboard";
 import { useState } from "react";
 import styles from "./Home.module.css";
 import PersonalTable from "../features/personal/components/PersonalTable";
@@ -14,6 +13,12 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState<"personal" | "business">(
     "personal"
   );
+
+  // Handler to update search when a status is clicked
+  const handleStatusClick = (status: string) => {
+    setSearch(status);
+  };
+
   return (
     <>
       <div className={styles.home}>
@@ -44,9 +49,11 @@ const Home = () => {
             </a>
           </div>
         </div>
+
         <div className={styles.dashboard}>
-          <Dashboard />
+          <Dashboard onStatusClick={handleStatusClick} />
         </div>
+
         <div className={styles.tableSection}>
           <div className={styles.tableSectionHeader}>
             <div className={styles.tableTabs}>
@@ -69,9 +76,7 @@ const Home = () => {
             </div>
           </div>
           <div className={styles.tableContainer}>
-            {activeTab == "personal" && (
-              <PersonalTable search={search} limit={10} />
-            )}
+            {activeTab == "personal" && <PersonalTable search={search} />}
             {activeTab == "business" && <BusinessTable search={search} />}
           </div>
         </div>

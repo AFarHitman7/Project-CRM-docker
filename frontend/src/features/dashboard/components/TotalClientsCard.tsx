@@ -23,9 +23,7 @@ const TotalClientsCard = () => {
     })
       .then((r) => r.json())
       .then(setCounts)
-      .catch(() => {
-        /* silent fail; dashboard must not crash */
-      });
+      .catch(() => {});
   }, []);
 
   const personal = counts?.personalClients ?? 0;
@@ -35,17 +33,20 @@ const TotalClientsCard = () => {
   /* donut math */
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const progress =
-    personal + business > 0
-      ? Math.round((total / (personal + business)) * 100)
-      : 0;
-  const offset = circumference * (1 - progress / 100);
+
+  // Calculate percentage of PERSONAL clients
+  const progress = total > 0 ? (personal / total) * 100 : 0;
+  const offset = circumference - (progress / 100) * circumference;
+
+  // Colors from your CSS
+  const COLOR_PERSONAL = "#214de7"; // dotDark (Blue)
+  const COLOR_BUSINESS = "#f43535"; // dotLight (Red)
+  const COLOR_EMPTY = "#E5E7EB"; // Gray for when total is 0
 
   return (
     <div className={styles.card}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.icon} aria-hidden />
           <h3 className={styles.title}>Total Clients</h3>
         </div>
       </header>
@@ -58,34 +59,34 @@ const TotalClientsCard = () => {
             height="140"
             viewBox="0 0 140 140"
           >
-            <defs>
-              <linearGradient id="g1" x1="0" x2="1">
-                <stop offset="0%" stopColor="#1420FF" />
-                <stop offset="100%" stopColor="#1420FF" />
-              </linearGradient>
-              <linearGradient id="g2" x1="0" x2="1">
-                <stop offset="0%" stopColor="#E5E7EB" />
-                <stop offset="100%" stopColor="#E5E7EB" />
-              </linearGradient>
-            </defs>
-
             <g transform="translate(70,70)">
+              {/* 1. BACKGROUND CIRCLE (Red / Business) 
+                 This sits at the bottom. Since Personal + Business = Total,
+                 whatever isn't covered by the Blue (Personal) circle will show as Red (Business).
+                 If total is 0, we show gray.
+              */}
               <circle
                 r={radius}
-                stroke="url(#g2)"
+                stroke={total > 0 ? COLOR_BUSINESS : COLOR_EMPTY}
                 strokeWidth="4"
                 fill="none"
               />
-              <circle
-                r={radius}
-                stroke="url(#g1)"
-                strokeWidth="4"
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={offset}
-                strokeLinecap="round"
-                transform="rotate(-90)"
-              />
+
+              {/* 2. FOREGROUND CIRCLE (Blue / Personal) 
+                 This overlays the red circle based on the percentage of personal clients.
+              */}
+              {total > 0 && (
+                <circle
+                  r={radius}
+                  stroke={COLOR_PERSONAL}
+                  strokeWidth="4"
+                  fill="none"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  strokeLinecap="round"
+                  transform="rotate(-90)"
+                />
+              )}
             </g>
           </svg>
 

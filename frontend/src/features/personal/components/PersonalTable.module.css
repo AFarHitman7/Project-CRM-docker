@@ -33,13 +33,10 @@
   padding: 0.4rem 1rem;
   font-size: 0.7rem;
   border-radius: 0.8rem;
- background-color: #F59E0B1A;
-  color: #F59E0B;
+  background-color: #f59e0b1a;
+  color: #f59e0b;
   display: flex;
   width: fit-content;
-  
-
- 
 }
 
 .filedon span {

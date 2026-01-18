@@ -1,0 +1,88 @@
+/* TaxStatusCard.module.css */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  margin-bottom: 0.6rem;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.count {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.95rem;
+}
+
+/* Business Card Specifics */
+.sectionTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 16px 0;
+}
+
+/* --- Status Badge Styles (From Requirements) --- */
+.statusBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.personalStatusBadge {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.personalStatusBadge:hover {
+  opacity: 0.8;
+}
+
+.InProgress {
+  background-color: #f59e0b1a;
+  color: #f59e0b;
+}
+
+.ReadyForReview,
+.PaperReceived {
+  background-color: #e3d0ff;
+  color: #7409cc;
+}
+
+.FiledOn {
+  background-color: #c8ffae;
+  color: #0e5606;
+}

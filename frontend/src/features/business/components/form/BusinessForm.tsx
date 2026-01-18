@@ -163,7 +163,6 @@ export default function BusinessForm() {
   const hstStatus = watch("hstStatus");
   const payrollStatus = watch("payrollStatus");
   const wsibStatus = watch("wsibStatus");
-  const annualRenewalStatus = watch("annualRenewalStatus");
 
   /* ================= ANNUAL RENEWAL PREFILL ================= */
   const incorporationDate = watch("incorporationDate");

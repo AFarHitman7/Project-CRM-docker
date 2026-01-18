@@ -23,21 +23,11 @@
   gap: 0.5rem;
 }
 
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem; /* 34px → 27px */
-  height: 1rem;
-  border-radius: 0.5rem;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 1), rgba(0, 0, 0, 1));
-}
-
 .title {
   font-size: 0.85rem;
   margin: 0;
   font-weight: 600;
-  color: #0f1720;
+  color: #111827;
 }
 
 .body {

@@ -1,8 +1,14 @@
 import styles from "./Dashboard.module.css";
+import BusinessTaxStatusCard from "./components/BusinessTaxStatusCard";
+import PersonalTaxStatusCard from "./components/PersonalTaxStatusCard";
 import TotalClientsCard from "./components/TotalClientsCard";
 import GenericCard from "./components/genericCard";
 
-const Dashboard = () => {
+interface DashboardProps {
+  onStatusClick: (status: string) => void;
+}
+
+export default function Dashboard({ onStatusClick }: DashboardProps) {
   return (
     <>
       <div className={styles.dashboard}>
@@ -11,12 +17,12 @@ const Dashboard = () => {
             <TotalClientsCard />
           </div>
           <div className={styles.dashCard}>
-            <GenericCard />
+            <PersonalTaxStatusCard onStatusClick={onStatusClick} />
           </div>
         </section>
         <section className={styles.dashSection}>
           <div className={styles.dashCard}>
-            <GenericCard />
+            <BusinessTaxStatusCard />
           </div>
         </section>
         <section className={styles.dashSection}>
@@ -27,6 +33,4 @@ const Dashboard = () => {
       </div>
     </>
   );
-};
-
-export default Dashboard;
+}

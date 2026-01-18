@@ -37,16 +37,19 @@ exports.getStatusCounts = async (req, res) => {
         /* Personal */
         (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'InProgress')     AS progress_personal_clients,
         (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'ReadyForReview') AS review_personal_clients,
+        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'PaperReceived') AS paper_received_personal_clients,
         (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'FiledOn')        AS filed_personal_clients,
 
         /* Business - HST */
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'HST') AS progress_business_hst,
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'HST') AS review_business_hst,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'HST') AS paper_received_business_hst,
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'HST') AS filed_business_hst,
 
         /* Business - Corporation */
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'CORPORATION') AS progress_business_corp,
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'CORPORATION') AS review_business_corp,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'CORPORATION') AS paper_received_business_corp,
         (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'CORPORATION') AS filed_business_corp
     `;
 
@@ -57,14 +60,17 @@ exports.getStatusCounts = async (req, res) => {
       progressPC: Number(r.progress_personal_clients),
       reviewPC: Number(r.review_personal_clients),
       filedOnPC: Number(r.filed_personal_clients),
+      paperReceivedPC: Number(r.paper_received_personal_clients),
 
       progressBC_HST: Number(r.progress_business_hst),
       reviewBC_HST: Number(r.review_business_hst),
       filedOnBC_HST: Number(r.filed_business_hst),
+      paperReceivedBC_HST: Number(r.paper_received_business_hst),
 
       progressBC_CORP: Number(r.progress_business_corp),
       reviewBC_CORP: Number(r.review_business_corp),
       filedOnBC_CORP: Number(r.filed_business_corp),
+      paperReceivedBC_CORP: Number(r.paper_received_business_corp),
     });
   } catch (err) {
     console.error("Status count error:", err);

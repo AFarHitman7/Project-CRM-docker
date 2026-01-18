@@ -996,6 +996,7 @@ async function patchTaxRecord(req, res) {
       vals.push(val);
     }
 
+    // --- Existing Fields ---
     if (payload.tax_year !== undefined) add("tax_year", payload.tax_year);
     if (payload.tax_period !== undefined) add("tax_period", payload.tax_period);
     if (payload.amount !== undefined) add("amount", payload.amount);
@@ -1003,6 +1004,14 @@ async function patchTaxRecord(req, res) {
     if (payload.status !== undefined) add("status", payload.status);
     if (payload.confirmation_number !== undefined)
       add("confirmation_number", payload.confirmation_number);
+
+    // --- NEW FIELDS ADDED HERE ---
+    if (payload.prepared_by !== undefined)
+      add("prepared_by", payload.prepared_by);
+    if (payload.from_date !== undefined) add("from_date", payload.from_date);
+    if (payload.to_date !== undefined) add("to_date", payload.to_date);
+    if (payload.update_renewal !== undefined)
+      add("update_renewal", payload.update_renewal);
 
     if (!sets.length) {
       await conn.query("ROLLBACK");

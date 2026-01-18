@@ -275,15 +275,15 @@ export default function BusinessDetails() {
   );
 
   function toCamelCaseText(str = "") {
-  return str
-    .toString()
-    .trim()
-    .toLowerCase()
-    .split(/[\s_-]+/)           // split by space, _ or -
-    .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+    return str
+      .toString()
+      .trim()
+      .toLowerCase()
+      .split(/[\s_-]+/) // split by space, _ or -
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
 
   return (
     <div className={styles.mainSection}>
@@ -472,7 +472,7 @@ export default function BusinessDetails() {
                         .filter(Boolean)
                         .map(toCamelCaseText)
                         .join(", ")}
-                    </span> 
+                    </span>
                   </div>
                 </Section>
               )}
@@ -689,10 +689,16 @@ export default function BusinessDetails() {
                           <table className={styles.table}>
                             <thead>
                               <tr>
-                                <th>Year</th>
-                                <th>Period</th>
+                                {/* Year - shown for all except ANNUAL_RENEWAL */}
+                                {tp.tax_type !== "ANNUAL_RENEWAL" && (
+                                  <th>Year</th>
+                                )}
 
-                                {/* 👇 Show From/To columns ONLY for HST Quarterly */}
+                                {/* Period - shown for HST (monthly/quarterly) and WSIB */}
+                                {(tp.tax_type === "HST" ||
+                                  tp.tax_type === "WSIB") && <th>Period</th>}
+
+                                {/* From/To - only for HST Quarterly */}
                                 {tp.tax_type === "HST" &&
                                   tp.frequency &&
                                   tp.frequency.toLowerCase() ===
@@ -703,9 +709,17 @@ export default function BusinessDetails() {
                                     </>
                                   )}
 
+                                {/* Slip Information - only for PAYROLL */}
+                                {tp.tax_type === "PAYROLL" && <th>Slips</th>}
+
+                                {/* Update Renewal - only for ANNUAL_RENEWAL */}
+                                {tp.tax_type === "ANNUAL_RENEWAL" && (
+                                  <th>Renewal Date</th>
+                                )}
+
                                 <th>Status</th>
                                 <th>Amount</th>
-                                <th>Date</th>
+                                <th>Filing Date</th>
                                 <th>Confirmation No.</th>
                                 <th>Prepared By</th>
                                 <th>Notes</th>
@@ -716,10 +730,18 @@ export default function BusinessDetails() {
                             <tbody>
                               {filteredRecords.map((r: any) => (
                                 <tr key={r.id}>
-                                  <td>{r.tax_year}</td>
-                                  <td>{r.tax_period || "—"}</td>
+                                  {/* Year */}
+                                  {tp.tax_type !== "ANNUAL_RENEWAL" && (
+                                    <td>{r.tax_year || "—"}</td>
+                                  )}
 
-                                  {/* 👇 Match condition — show from/to dates */}
+                                  {/* Period */}
+                                  {(tp.tax_type === "HST" ||
+                                    tp.tax_type === "WSIB") && (
+                                    <td>{r.tax_period || "—"}</td>
+                                  )}
+
+                                  {/* From/To dates for HST Quarterly */}
                                   {tp.tax_type === "HST" &&
                                     tp.frequency &&
                                     tp.frequency.toLowerCase() ===
@@ -738,11 +760,49 @@ export default function BusinessDetails() {
                                       </>
                                     )}
 
-                                  <td>{r.status}</td>
-                                  <td>{r.amount ?? "—"}</td>
-                                  <td>{formatDate(r.tax_date)}</td>
-                                  <td>{r.confirmation_number}</td>
-                                  <td>{r.created_by_name}</td>
+                                  {/* Slip Information for PAYROLL */}
+                                  {tp.tax_type === "PAYROLL" && (
+                                    <td>
+                                      {r.slip_information &&
+                                      Array.isArray(r.slip_information)
+                                        ? r.slip_information.join(", ")
+                                        : "—"}
+                                    </td>
+                                  )}
+
+                                  {/* Update Renewal for ANNUAL_RENEWAL */}
+                                  {tp.tax_type === "ANNUAL_RENEWAL" && (
+                                    <td>
+                                      {r.update_renewal
+                                        ? formatDate(r.update_renewal)
+                                        : "—"}
+                                    </td>
+                                  )}
+
+                                  <td>
+                                    <span
+                                      className={`${styles.statusBadge} ${
+                                        styles[r.status]
+                                      }`}
+                                    >
+                                      {r.status}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {r.amount
+                                      ? new Intl.NumberFormat("en-CA", {
+                                          style: "currency",
+                                          currency: "CAD",
+                                        }).format(r.amount)
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {r.tax_date ? formatDate(r.tax_date) : "—"}
+                                  </td>
+                                  <td>{r.confirmation_number || "—"}</td>
+                                  <td>
+                                    {r.prepared_by || r.created_by_name || "—"}
+                                  </td>
                                   <td>
                                     <button
                                       onClick={() => {

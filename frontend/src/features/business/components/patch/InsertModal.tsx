@@ -10,7 +10,7 @@ interface BusinessTaxForm {
   taxPeriod: string;
   amount: string;
   confirmationNumber: string;
-  status: "PaperReceived" | "InProgress" | "ReadyForReview"|"FiledOn";
+  status: "PaperReceived" | "InProgress" | "ReadyForReview" | "FiledOn";
   taxDate: string;
   fromDate?: string;
   toDate?: string;
@@ -308,6 +308,17 @@ export default function InsertBusinessResourceModal({
     });
   }, [activeTaxTab, taxProfiles, visible]);
 
+  /* ================= AUTO-DERIVE TAX YEAR FOR RENEWAL ================= */
+  // Whenever updateRenewal changes, if it is Annual Renewal, update taxYear
+  useEffect(() => {
+    if (activeTaxTab === "ANNUAL_RENEWAL" && form.updateRenewal) {
+      const year = new Date(form.updateRenewal).getFullYear();
+      if (!isNaN(year) && form.taxYear !== String(year)) {
+        setForm((prev) => ({ ...prev, taxYear: String(year) }));
+      }
+    }
+  }, [activeTaxTab, form.updateRenewal, form.taxYear]);
+
   /* ================= ACTIONS ================= */
 
   const resetForm = () => {
@@ -341,7 +352,7 @@ export default function InsertBusinessResourceModal({
       return;
     }
 
-    // Tax year is NOT required for ANNUAL_RENEWAL
+    // Tax year is NOT required for ANNUAL_RENEWAL (we auto-derived it, but if it fails, we let it pass)
     if (activeTaxTab !== "ANNUAL_RENEWAL" && !form.taxYear) {
       alert("Tax year is required");
       return;
