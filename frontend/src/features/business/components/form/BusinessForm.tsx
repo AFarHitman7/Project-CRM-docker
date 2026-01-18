@@ -824,17 +824,6 @@ export default function BusinessForm() {
                   <option value="Q4">Q4</option>
                 </select>
               </div>
-
-              <div className={styles.formField}>
-                <label htmlFor="wsibStartingYear">Starting Year *</label>
-                <input
-                  id="wsibStartingYear"
-                  type="number"
-                  {...register("wsibStartingYear", {
-                    required: wsibStatus ? "Starting year is required" : false,
-                  })}
-                />
-              </div>
             </div>
           )}
         </section>

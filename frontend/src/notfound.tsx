@@ -7,7 +7,7 @@ const NotFound = () => {
   return (
     <>
       <div className="errorPage">
-        <div className="e404">Page not found. Error 404.</div>
+        <div className="e404">Page Under Construction</div>
         <button onClick={() => navigate(-1)} className="eback">
           Go Back
         </button>

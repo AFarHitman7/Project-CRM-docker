@@ -36,7 +36,7 @@ const PersonalTaxStatusCard = ({ onStatusClick }: Props) => {
         <h3 className={styles.title}>Personal Tax Status</h3>
       </header>
 
-      <div className={styles.list}>
+      <div className={`${styles.list} ${styles.personalList}`}>
         <div className={styles.row}>
           <span
             className={`${styles.statusBadge} ${styles.personalStatusBadge} ${styles.InProgress}`}
@@ -45,26 +45,6 @@ const PersonalTaxStatusCard = ({ onStatusClick }: Props) => {
             In Progress
           </span>
           <span className={styles.count}>{counts?.progressPC ?? 0}</span>
-        </div>
-
-        <div className={styles.row}>
-          <span
-            className={`${styles.statusBadge} ${styles.personalStatusBadge} ${styles.PaperReceived}`}
-            onClick={() => onStatusClick("PaperReceived")}
-          >
-            Paper Received
-          </span>
-          <span className={styles.count}>{counts?.paperReceivedPC ?? 0}</span>
-        </div>
-
-        <div className={styles.row}>
-          <span
-            className={`${styles.statusBadge} ${styles.personalStatusBadge} ${styles.ReadyForReview}`}
-            onClick={() => onStatusClick("ReadyForReview")}
-          >
-            Ready For Review
-          </span>
-          <span className={styles.count}>{counts?.reviewPC ?? 0}</span>
         </div>
 
         <div className={styles.row}>
