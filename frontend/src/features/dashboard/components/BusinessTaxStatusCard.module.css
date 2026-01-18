@@ -1,0 +1,118 @@
+.card {
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  /* Scaled down from 10px */
+  gap: 0.4rem;
+  /* Scaled down from 24px */
+  margin-bottom: 12px;
+}
+
+.headerIcon {
+  font-size: 1rem;
+  color: #111827;
+}
+
+.title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+/* Sections */
+.section {
+  border: 1px solid #e5e7eb;
+  /* Scaled down from 12px */
+  border-radius: 6px;
+  /* Scaled down from 20px */
+  padding: 10px;
+  /* Scaled down from 20px */
+  margin-bottom: 10px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  /* Scaled down from 1.1rem */
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #111827;
+  /* Scaled down from 16px */
+  margin: 0 0 8px 0;
+}
+
+/* Grid Layout for the 4 Cards */
+.grid {
+  display: flex;
+  justify-content: center;
+  /* Scaled down from 16px */
+  gap: 8px;
+}
+
+/* Individual Status Block Styling */
+.statusBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Scaled down from 24px 12px */
+  padding: 12px 6px;
+  /* Scaled down from 12px */
+  border-radius: 6px;
+  text-align: center;
+  /* Scaled down from 110px */
+  min-height: 55px;
+  min-width: 6rem;
+  border: 1px solid transparent;
+}
+
+.statusLabel {
+  /* Scaled down from 0.8rem */
+  font-size: 0.5rem;
+  color: #4b5563;
+  /* Scaled down from 12px */
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.statusValue {
+  /* Scaled down from 1.5rem */
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  text-decoration: underline;
+  /* Scaled down from 2px */
+  text-decoration-thickness: 1px;
+  /* Scaled down from 4px */
+  text-underline-offset: 2px;
+}
+
+/* --- Color Themes (Unchanged, just colors) --- */
+
+.paper {
+  background-color: #63a4f91a;
+  border: none;
+}
+
+.progress {
+  background-color: #f59e0b1a;
+  border: none;
+}
+
+.review {
+  background-color: #8b5cf61a;
+  border: none;
+}
+
+.filed {
+  background-color: #43ffc11a;
+  border: none;
+}
