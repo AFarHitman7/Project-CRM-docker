@@ -639,7 +639,10 @@ export default function BusinessDetails() {
                       <div className={styles.subSection}>
                         <Grid>
                           {tp.frequency && (
-                            <Field label="Frequency" value={tp.frequency} />
+                            <Field
+                              label="Frequency"
+                              value={toCamelCaseText(tp.frequency)}
+                            />
                           )}
                           {tp.start_date && (
                             <Field

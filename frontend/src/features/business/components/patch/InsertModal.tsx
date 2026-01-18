@@ -359,9 +359,9 @@ export default function InsertBusinessResourceModal({
     }
 
     // If status is FiledOn, require amount and confirmation number
-    if (form.status === "FiledOn") {
+    if (form.status === "FiledOn" || form.status === "ReadyForReview") {
       if (!form.amount) {
-        alert("Amount is required when status is FiledOn");
+        alert("Amount is required");
         return;
       }
       if (!form.confirmationNumber) {
@@ -818,7 +818,8 @@ export default function InsertBusinessResourceModal({
                       </div>
 
                       {/* Show Amount and Confirmation Number only when FiledOn */}
-                      {form.status === "FiledOn" && (
+                      {(form.status === "FiledOn" ||
+                        form.status === "ReadyForReview") && (
                         <>
                           <div className={styles.formField}>
                             <label>Amount *</label>
