@@ -307,10 +307,7 @@ export default function EditTaxModal({
               <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Status</label>
-                  {/* Updated Order: InProgress -> ReadyForReview -> PaperReceived -> FiledOn */}
                   <select {...register("status")}>
-                    <option value="InProgress">InProgress</option>
-                    <option value="ReadyForReview">ReadyForReview</option>
                     <option value="PaperReceived">PaperReceived</option>
                     <option value="FiledOn">FiledOn</option>
                   </select>
