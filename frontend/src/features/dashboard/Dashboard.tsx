@@ -3,6 +3,7 @@ import BusinessTaxStatusCard from "./components/BusinessTaxStatusCard";
 import PersonalTaxStatusCard from "./components/PersonalTaxStatusCard";
 import TotalClientsCard from "./components/TotalClientsCard";
 import GenericCard from "./components/genericCard";
+import BirthdayCard from "./components/BirthdayCard";
 
 interface DashboardProps {
   onStatusClick: (status: string) => void;
@@ -27,7 +28,7 @@ export default function Dashboard({ onStatusClick }: DashboardProps) {
         </section>
         <section className={styles.dashSection}>
           <div className={styles.dashCard}>
-            <GenericCard />
+            <BirthdayCard />
           </div>
         </section>
       </div>

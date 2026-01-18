@@ -77,3 +77,46 @@ exports.getStatusCounts = async (req, res) => {
     return res.status(500).json({ error: "server_error" });
   }
 };
+
+exports.getBirthday = async (req, res) => {
+  try {
+    // Logic:
+    // 1. Filter out clients with no DOB.
+    // 2. CASE statement assigns '0' to birthdays happening today or later this year.
+    // 3. CASE statement assigns '1' to birthdays that already passed (next year).
+    // 4. Sort by that priority group (0 first, then 1).
+    // 5. Secondary sort by Month-Day string to find the earliest within the group.
+
+    const sql = `
+      SELECT 
+        id, 
+        first_name, 
+        last_name, 
+        email, 
+        dob
+      FROM clients
+      WHERE dob IS NOT NULL
+      ORDER BY 
+        CASE 
+          WHEN to_char(dob, 'MM-DD') >= to_char(CURRENT_DATE, 'MM-DD') THEN 0 
+          ELSE 1 
+        END ASC,
+        to_char(dob, 'MM-DD') ASC
+      LIMIT 1
+    `;
+
+    const { rows } = await pool.query(sql);
+
+    if (rows.length === 0) {
+      return res.json({ message: "No clients with dates of birth found" });
+    }
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error("getBirthday error:", err);
+    return res.status(500).json({
+      error: "server_error",
+      details: err.message,
+    });
+  }
+};

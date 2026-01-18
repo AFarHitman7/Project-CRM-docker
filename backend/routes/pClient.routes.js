@@ -28,22 +28,26 @@ router.get("/", listClients);
 router.post("/", createPersonal);
 router.get("/:id", getClient);
 router.patch("/edit/:id", patchClient);
-router.delete("/:id", deleteClient);
+router.delete("/:id", requireRole("admin"), deleteClient);
 router.post("/bulk", requireRole("admin"), createBulk);
 router.post("/:id/spouse", createSpouse);
 
 // ADDRESSES
 router.post("/:id/addresses", insertAddress);
-router.delete("/:id/addresses/:addressId", deleteAddress);
+router.delete("/:id/addresses/:addressId", requireRole("admin"), deleteAddress);
 
 // DEPENDENTS
 router.post("/:id/dependents", insertDependent);
-router.delete("/:id/dependents/:dependentId", deleteDependent);
+router.delete(
+  "/:id/dependents/:dependentId",
+  requireRole("admin"),
+  deleteDependent
+);
 router.patch("/:id/dependents/:dependentId", patchDependent);
 
 // TAX RECORDS
 router.post("/:id/tax-records", insertTaxRecord);
-router.delete("/:id/tax-records/:taxId", deleteTaxRecord);
+router.delete("/:id/tax-records/:taxId", requireRole("admin"), deleteTaxRecord);
 router.patch("/:id/tax-records/:taxId", patchTaxRecord);
 
 // Notes

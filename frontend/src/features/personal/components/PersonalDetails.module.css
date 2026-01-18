@@ -309,15 +309,18 @@ td .buttonContainer {
   text-transform: capitalize;
 }
 
-.ReadyForReview,
-.PaperReceived {
+.ReadyForReview {
   background-color: #e3d0ff;
   color: #7409cc;
 }
+.PaperReceived {
+  background-color: #b1d5ff;
+  color: #63a4f9;
+}
 
 .FiledOn {
-  background-color: #c8ffae;
-  color: #0e5606;
+  background-color: #10b9811a;
+  color: #145a43;
 }
 
 .InProgress {

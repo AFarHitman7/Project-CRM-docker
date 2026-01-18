@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import styles from "./TaxStatusCard.module.css";
+import { IoPersonSharp } from "react-icons/io5";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -33,7 +34,8 @@ const PersonalTaxStatusCard = ({ onStatusClick }: Props) => {
   return (
     <div className={styles.card}>
       <header className={styles.header}>
-        <h3 className={styles.title}>Personal Tax Status</h3>
+        <IoPersonSharp size={"1.2rem"} />
+        <h3 className={styles.title}>Personal Tax Overview</h3>
       </header>
 
       <div className={`${styles.list} ${styles.personalList}`}>

@@ -45,13 +45,18 @@
 }
 
 .filedon span {
-  background-color: #c8ffae;
-  color: #0e5606;
+  background-color: #10b9811a;
+  color: #145a43;
 }
 
 .readytofile span {
   background-color: #e3d0ff;
   color: #7409cc;
+}
+
+.paperreceived span {
+  background-color: #b1d5ff;
+  color: #63a4f9;
 }
 
 tbody tr:hover {

@@ -27,17 +27,22 @@ router.get("/", listClients);
 router.post("/", createBusiness);
 router.get("/:id", getBusiness);
 router.patch("/edit/:id", patchBusiness);
-router.delete("/:id", deleteBusiness);
+router.delete("/:id", requireRole("admin"), deleteBusiness);
 
 //tax records
 router.post("/:businessId/tax-records", createTaxRecord);
 router.patch("/:businessId/tax-records/:taxRecordId", patchTaxRecord);
-router.delete("/:businessId/tax-records/:taxRecordId", deleteTaxRecord);
+router.delete(
+  "/:businessId/tax-records/:taxRecordId",
+  requireRole("admin"),
+  deleteTaxRecord
+);
 
 //shareholder
 router.post("/:businessId/shareholders", createBusinessShareholder);
 router.delete(
   "/:businessId/shareholders/:shareholderId",
+  requireRole("admin"),
   deleteBusinessShareholder
 );
 

@@ -25,7 +25,6 @@ function getEffectiveFrequency(profile: any, taxType: string) {
   return String(profile.frequency).toLowerCase();
 }
 
-// Updated interface with new fields
 interface TaxForm {
   taxYear: number | "";
   taxPeriod: string;
@@ -58,13 +57,16 @@ export default function EditTaxModal({
     register,
     handleSubmit,
     reset,
-
+    watch,
     formState: { isSubmitting },
   } = useForm<TaxForm>({
     mode: "onTouched",
   });
 
   const [activeProfile, setActiveProfile] = useState<any>(null);
+
+  // Watch status for conditional field visibility
+  const currentStatus = watch("status");
 
   // Helper to safely format dates for inputs (YYYY-MM-DD)
   const formatDateForInput = (dateStr: string | null) => {
@@ -101,7 +103,6 @@ export default function EditTaxModal({
       taxDate: formatDateForInput(taxRecord.tax_date),
       status: taxRecord.status ?? "",
       confirmationNumber: taxRecord.confirmation_number ?? "",
-      // New Fields mappings (assuming snake_case from DB)
       preparedBy: taxRecord.prepared_by ?? "",
       fromDate: formatDateForInput(taxRecord.from_date),
       toDate: formatDateForInput(taxRecord.to_date),
@@ -121,12 +122,14 @@ export default function EditTaxModal({
 
     // 1. Basic Fields
     if (data.taxYear !== taxRecord.tax_year) {
-      // Logic: If it's Annual Renewal, we might send null, or keep existing behavior
       payload.tax_year = data.taxYear === "" ? null : Number(data.taxYear);
     }
 
-    if (data.amount !== String(taxRecord.amount ?? "")) {
-      payload.amount = data.amount === "" ? null : Number(data.amount);
+    // Amount Logic
+    const newAmount = data.amount ? Number(data.amount) : null;
+    const oldAmount = taxRecord.amount ? Number(taxRecord.amount) : null;
+    if (newAmount !== oldAmount) {
+      payload.amount = newAmount;
     }
 
     if (data.status !== taxRecord.status) {
@@ -137,11 +140,14 @@ export default function EditTaxModal({
       payload.prepared_by = data.preparedBy || null;
     }
 
-    if (data.confirmationNumber !== (taxRecord.confirmation_number ?? "")) {
-      payload.confirmation_number = data.confirmationNumber || null;
+    // Confirmation Logic
+    const newConf = data.confirmationNumber || null;
+    const oldConf = taxRecord.confirmation_number || null;
+    if (newConf !== oldConf) {
+      payload.confirmation_number = newConf;
     }
 
-    // 2. Date Fields (Compare Input vs DB ISO date)
+    // 2. Date Fields
     const compareDate = (
       inputDate: string,
       dbDate: string | null,
@@ -228,7 +234,7 @@ export default function EditTaxModal({
         <form className={styles.modalForm} onSubmit={handleSubmit(onSubmit)}>
           <div className={styles.modalBody}>
             <div className={styles.formSection}>
-              {/* Row 1: Tax Year (Hidden for Annual Renewal) & Amount */}
+              {/* Row 1: Tax Year & Amount (Conditionally Rendered) */}
               <div className={styles.formRow}>
                 {!isAnnualRenewal && (
                   <div className={styles.formField}>
@@ -240,10 +246,18 @@ export default function EditTaxModal({
                   </div>
                 )}
 
-                <div className={styles.formField}>
-                  <label>Amount</label>
-                  <input type="number" step="0.01" {...register("amount")} />
-                </div>
+                {/* SHOW AMOUNT ONLY IF FiledOn OR ReadyForReview */}
+                {(currentStatus === "FiledOn" ||
+                  currentStatus === "ReadyForReview") && (
+                  <div className={styles.formField}>
+                    <label>Amount *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      {...register("amount", { required: true })}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Row 2: Prepared By & Period */}
@@ -253,7 +267,6 @@ export default function EditTaxModal({
                   <input type="text" {...register("preparedBy")} />
                 </div>
 
-                {/* Period Logic: Hidden for Yearly/Annual Renewal usually */}
                 {activeProfile?.frequency === "quarterly" &&
                   !isAnnualRenewal && (
                     <div className={styles.formField}>
@@ -307,12 +320,21 @@ export default function EditTaxModal({
               <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Status</label>
-                  {/* Updated Order: InProgress -> ReadyForReview -> PaperReceived -> FiledOn */}
                   <select {...register("status")}>
-                    <option value="InProgress">InProgress</option>
-                    <option value="ReadyForReview">ReadyForReview</option>
-                    <option value="PaperReceived">PaperReceived</option>
-                    <option value="FiledOn">FiledOn</option>
+                    {/* CONDITIONAL OPTIONS FOR STATUS */}
+                    {isAnnualRenewal ? (
+                      <>
+                        <option value="PaperReceived">PaperReceived</option>
+                        <option value="FiledOn">FiledOn</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="InProgress">InProgress</option>
+                        <option value="ReadyForReview">ReadyForReview</option>
+                        <option value="PaperReceived">PaperReceived</option>
+                        <option value="FiledOn">FiledOn</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -322,11 +344,15 @@ export default function EditTaxModal({
                 </div>
               </div>
 
-              {/* Row 6: Confirmation Number */}
-              <div className={styles.formField}>
-                <label>Confirmation Number</label>
-                <input {...register("confirmationNumber")} />
-              </div>
+              {/* Row 6: Confirmation Number (Conditionally Rendered) */}
+              {currentStatus === "FiledOn" && (
+                <div className={styles.formField}>
+                  <label>Confirmation Number *</label>
+                  <input
+                    {...register("confirmationNumber", { required: true })}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

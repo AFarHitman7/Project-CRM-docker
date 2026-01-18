@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import styles from "./totalClientsCard.module.css";
+import { MdGroups } from "react-icons/md";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -47,6 +48,7 @@ const TotalClientsCard = () => {
     <div className={styles.card}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
+          <MdGroups size={"1.5rem"} />
           <h3 className={styles.title}>Total Clients</h3>
         </div>
       </header>

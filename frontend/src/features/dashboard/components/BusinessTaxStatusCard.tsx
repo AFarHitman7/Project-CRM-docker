@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import styles from "./TaxStatusCard.module.css";
+import { FaBriefcase } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -32,6 +33,7 @@ const BusinessTaxStatusCard = () => {
   return (
     <div className={styles.card}>
       <header className={styles.header}>
+        <FaBriefcase size={"1.2rem"} />
         <h3 className={styles.title}>Business Tax Status</h3>
       </header>
 
