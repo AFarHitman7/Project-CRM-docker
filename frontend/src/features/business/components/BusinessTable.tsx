@@ -15,6 +15,8 @@ interface BusinessData {
   business_type?: string;
   phone_cell?: string;
   email?: string;
+  contact_name?: string;
+  fiscal_year_end?: string;
   created_at?: string;
 }
 
@@ -24,13 +26,16 @@ interface BusinessTableProps {
   data?: Row[];
 }
 
+// 1. Updated Headers Order
 const headers: string[] = [
-  "Business Name",
-  "Type",
+  "Name",
+  "Type", // Added Type here
+  "Business Number", // Moved Business Number after Type
   "Phone Number",
-  "Email ID",
-  "Created At",
-  "",
+  "Email",
+  "Contact Name",
+  "Fiscal Year End",
+  "", // View Details button column
 ];
 
 const getData = async (): Promise<Row[]> => {
@@ -52,14 +57,30 @@ const getData = async (): Promise<Row[]> => {
   const result = await res.json();
   const businesses: BusinessData[] = result.data || [];
 
-  return businesses.map((b) => [
-    b.id,
-    b.business_name || "—",
-    b.business_type || "—",
-    b.phone_cell || "—",
-    b.email || "—",
-    b.created_at ? new Date(b.created_at).toLocaleDateString() : "—",
-  ]);
+  return businesses.map((b) => {
+    // Format Fiscal Year End
+    let fiscalString = "—";
+    if (b.fiscal_year_end) {
+      const date = new Date(b.fiscal_year_end);
+      fiscalString = date.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+    }
+
+    // 2. Map data to strict array indices matching headers
+    return [
+      b.id, // 0: ID (Hidden)
+      b.business_name || "—", // 1: Name
+      b.business_type || "—", // 2: Type
+      b.business_number || "—", // 3: Business Number
+      b.phone_cell || "—", // 4: Phone Number
+      b.email || "—", // 5: Email
+      b.contact_name || "—", // 6: Contact Name
+      fiscalString, // 7: Fiscal Year End
+    ];
+  });
 };
 
 const BusinessTable: React.FC<BusinessTableProps> = ({
@@ -106,16 +127,18 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
 
     if (!normalizedSearch) return true;
 
-    for (let i = 0; i < row.length; i++) {
+    // Iterate through visible columns (indices 1 to 7)
+    for (let i = 1; i < row.length; i++) {
       const cell = String(row[i] ?? "");
 
-      // phone search normalization
-      if (i === 3) {
+      // Basic text match
+      if (cell.toLowerCase().includes(normalizedSearch)) return true;
+
+      // Phone normalization (Index 4 is Phone Number now)
+      if (i === 4) {
         const cellNum = cell.replace(/\D/g, "");
         const searchNum = normalizedSearch.replace(/\D/g, "");
         if (searchNum && cellNum.includes(searchNum)) return true;
-      } else {
-        if (cell.toLowerCase().includes(normalizedSearch)) return true;
       }
     }
 
@@ -165,11 +188,14 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
                 }
               }}
             >
-              <td className={styles.tableCell}>{row[1]}</td>
-              <td className={styles.tableCell}>{row[2]}</td>
-              <td className={styles.tableCell}>{row[3]}</td>
-              <td className={styles.tableCell}>{row[4]}</td>
-              <td className={styles.tableCell}>{row[5]}</td>
+              {/* 3. Render cells matching the order in getData */}
+              <td className={styles.tableCell}>{row[1]}</td> {/* Name */}
+              <td className={styles.tableCell}>{row[2]}</td> {/* Type */}
+              <td className={styles.tableCell}>{row[3]}</td> {/* Number */}
+              <td className={styles.tableCell}>{row[4]}</td> {/* Phone */}
+              <td className={styles.tableCell}>{row[5]}</td> {/* Email */}
+              <td className={styles.tableCell}>{row[6]}</td> {/* Contact */}
+              <td className={styles.tableCell}>{row[7]}</td> {/* Fiscal Year */}
               <td className={styles.tableCell}>
                 <button
                   className={styles.viewBtn}

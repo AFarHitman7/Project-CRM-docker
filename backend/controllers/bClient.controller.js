@@ -60,6 +60,7 @@ async function listClients(req, res) {
         bc.business_type,
         bc.email,
         bc.contact_name,
+        bc.fiscal_year_end,
         bc.phone_cell,
         bc.created_at
       FROM business_clients bc
