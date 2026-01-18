@@ -1,0 +1,197 @@
+/* BirthdayCard.module.css */
+
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Removed min-height to let it fit naturally, or keep 400px if you want alignment */
+}
+
+.header {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* --- CALENDAR --- */
+.calendarContainer {
+  background: #ffffff;
+  padding: 0 5px; /* Minimal padding */
+  margin-bottom: 20px;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.monthLabel {
+  font-weight: 700;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.navBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.navBtn:hover {
+  background-color: #d1d5db;
+  color: #111;
+}
+
+/* Unified Grid: 7 columns, 2 rows (Headers + Dates) */
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 12px; /* Space between "Mon" and "10" */
+  text-align: center;
+}
+
+.weekday {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  /* Optional: Keep underline if you liked it */
+  text-decoration: underline;
+  text-decoration-color: #e5e7eb;
+  text-underline-offset: 4px;
+}
+
+.day {
+  font-size: 1rem; /* Slightly larger for the number */
+  color: #1f2937; /* Darker text for visibility */
+  font-weight: 500;
+  height: 40px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border-radius: 12px; /* Rounded square shape */
+  cursor: default;
+}
+
+/* Weekends */
+.weekend {
+  color: #ef4444; /* Red */
+  font-weight: 600;
+}
+
+/* Selected / Birthday */
+.selected {
+  background-color: #4f46e5; /* Indigo */
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3);
+}
+
+/* --- PROFILE --- */
+.profileSection {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  width: 100%;
+}
+
+.profileRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #374151;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.profileName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.profileText {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.wishButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #e9d5ff;
+  color: #6b21a8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px;
+  border-radius: 12px;
+  transition: background-color 0.2s;
+}
+
+.wishButton:hover {
+  background-color: #d8b4fe;
+}
+
+.emptyState {
+  text-align: center;
+  color: #9ca3af;
+  margin-top: 20px;
+  font-size: 0.9rem;
+}
