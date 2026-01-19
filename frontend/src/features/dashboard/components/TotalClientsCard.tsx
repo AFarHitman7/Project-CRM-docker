@@ -40,7 +40,7 @@ const TotalClientsCard = () => {
   const offset = circumference - (progress / 100) * circumference;
 
   // Colors from your CSS
-  const COLOR_PERSONAL = "#214de7"; // dotDark (Blue)
+  const COLOR_PERSONAL = "#63a4f9"; // dotDark (Blue)
   const COLOR_BUSINESS = "#f43535"; // dotLight (Red)
   const COLOR_EMPTY = "#E5E7EB"; // Gray for when total is 0
 

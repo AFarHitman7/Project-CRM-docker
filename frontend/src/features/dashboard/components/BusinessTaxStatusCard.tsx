@@ -81,73 +81,74 @@ const BusinessTaxStatusCard = () => {
           <h3 className={styles.title}>BusinessTax Overview</h3>
         </header>
 
-        {/* HST SECTION */}
-        <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>HST Tax</h4>
-          <div className={styles.grid}>
-            {renderStatusBlock(
-              "PaperReceived",
-              counts?.paperReceivedBC_HST ?? 0,
-              "paper",
-              "HST",
-              "PaperReceived"
-            )}
-            {renderStatusBlock(
-              "InProgress",
-              counts?.progressBC_HST ?? 0,
-              "progress",
-              "HST",
-              "InProgress"
-            )}
-            {renderStatusBlock(
-              "ReadyForReview",
-              counts?.reviewBC_HST ?? 0,
-              "review",
-              "HST",
-              "ReadyForReview"
-            )}
-            {renderStatusBlock(
-              "Filed",
-              counts?.filedOnBC_HST ?? 0,
-              "filed",
-              "HST",
-              "FiledOn"
-            )}
+        <div className={styles.sectionContainer}>
+          {/* HST SECTION */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>HST Tax</h4>
+            <div className={styles.grid}>
+              {renderStatusBlock(
+                "PaperReceived",
+                counts?.paperReceivedBC_HST ?? 0,
+                "paper",
+                "HST",
+                "PaperReceived"
+              )}
+              {renderStatusBlock(
+                "InProgress",
+                counts?.progressBC_HST ?? 0,
+                "progress",
+                "HST",
+                "InProgress"
+              )}
+              {renderStatusBlock(
+                "ReadyForReview",
+                counts?.reviewBC_HST ?? 0,
+                "review",
+                "HST",
+                "ReadyForReview"
+              )}
+              {renderStatusBlock(
+                "Filed",
+                counts?.filedOnBC_HST ?? 0,
+                "filed",
+                "HST",
+                "FiledOn"
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* CORPORATION SECTION */}
-        <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>Corporation Tax</h4>
-          <div className={styles.grid}>
-            {renderStatusBlock(
-              "PaperReceived",
-              counts?.paperReceivedBC_CORP ?? 0,
-              "paper",
-              "CORPORATION",
-              "PaperReceived"
-            )}
-            {renderStatusBlock(
-              "InProgress",
-              counts?.progressBC_CORP ?? 0,
-              "progress",
-              "CORPORATION",
-              "InProgress"
-            )}
-            {renderStatusBlock(
-              "ReadyForReview",
-              counts?.reviewBC_CORP ?? 0,
-              "review",
-              "CORPORATION",
-              "ReadyForReview"
-            )}
-            {renderStatusBlock(
-              "Filed",
-              counts?.filedOnBC_CORP ?? 0,
-              "filed",
-              "CORPORATION",
-              "FiledOn"
-            )}
+          {/* CORPORATION SECTION */}
+          <div className={styles.section}>
+            <h4 className={styles.sectionTitle}>Corporation Tax</h4>
+            <div className={styles.grid}>
+              {renderStatusBlock(
+                "PaperReceived",
+                counts?.paperReceivedBC_CORP ?? 0,
+                "paper",
+                "CORPORATION",
+                "PaperReceived"
+              )}
+              {renderStatusBlock(
+                "InProgress",
+                counts?.progressBC_CORP ?? 0,
+                "progress",
+                "CORPORATION",
+                "InProgress"
+              )}
+              {renderStatusBlock(
+                "ReadyForReview",
+                counts?.reviewBC_CORP ?? 0,
+                "review",
+                "CORPORATION",
+                "ReadyForReview"
+              )}
+              {renderStatusBlock(
+                "Filed",
+                counts?.filedOnBC_CORP ?? 0,
+                "filed",
+                "CORPORATION",
+                "FiledOn"
+              )}
+            </div>
           </div>
         </div>
       </div>

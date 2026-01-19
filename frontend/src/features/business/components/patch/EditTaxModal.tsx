@@ -246,18 +246,19 @@ export default function EditTaxModal({
                   </div>
                 )}
 
-                {/* SHOW AMOUNT ONLY IF FiledOn OR ReadyForReview */}
+                {/* SHOW AMOUNT ONLY IF FiledOn OR ReadyForReview AND NOT Annual Renewal */}
                 {(currentStatus === "FiledOn" ||
-                  currentStatus === "ReadyForReview") && (
-                  <div className={styles.formField}>
-                    <label>Amount *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      {...register("amount", { required: true })}
-                    />
-                  </div>
-                )}
+                  currentStatus === "ReadyForReview") &&
+                  !isAnnualRenewal && (
+                    <div className={styles.formField}>
+                      <label>Amount *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        {...register("amount", { required: true })}
+                      />
+                    </div>
+                  )}
               </div>
 
               {/* Row 2: Prepared By & Period */}
@@ -344,8 +345,8 @@ export default function EditTaxModal({
                 </div>
               </div>
 
-              {/* Row 6: Confirmation Number (Conditionally Rendered) */}
-              {currentStatus === "FiledOn" && (
+              {/* Row 6: Confirmation Number (Conditionally Rendered - NOT for Annual Renewal) */}
+              {currentStatus === "FiledOn" && !isAnnualRenewal && (
                 <div className={styles.formField}>
                   <label>Confirmation Number *</label>
                   <input

@@ -36,6 +36,14 @@
   margin-bottom: 10px;
 }
 
+.sectionContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.6 rem 0;
+  height: 100%;
+}
+
 .section:last-child {
   margin-bottom: 0;
 }
@@ -71,7 +79,8 @@
   /* Scaled down from 110px */
   min-height: 55px;
   min-width: 6rem;
-  border: 1px solid transparent;
+  width: 100%;
+  border: 1px solid #e5e7eb;
 }
 
 .statusLabel {
@@ -97,22 +106,18 @@
 
 /* --- Color Themes (Unchanged, just colors) --- */
 
-.paper {
+.paper:hover {
   background-color: #63a4f91a;
-  border: none;
 }
 
-.progress {
+.progress:hover {
   background-color: #f59e0b1a;
-  border: none;
 }
 
-.review {
+.review:hover {
   background-color: #8b5cf61a;
-  border: none;
 }
 
-.filed {
+.filed:hover {
   background-color: #43ffc11a;
-  border: none;
 }

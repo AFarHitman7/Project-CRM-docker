@@ -1,18 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./Home.module.css";
 import PersonalTable from "../features/personal/components/PersonalTable";
 import Dashboard from "../features/dashboard/Dashboard";
-
 //icons
 import { IoSearchSharp } from "react-icons/io5";
 import { IoMdAdd } from "react-icons/io";
 import { BusinessTable } from "../features/business";
+
+const API_URL = import.meta.env.VITE_API_URL || "";
+
+interface Counts {
+  personalClients: number;
+  businessClients: number;
+  totalClients: number;
+}
 
 const Home = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"personal" | "business">(
     "personal"
   );
+  const [counts, setCounts] = useState<Counts | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch(`${API_URL}/api/dashboard/counts`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((r) => r.json())
+      .then(setCounts)
+      .catch(() => {});
+  }, []);
+
+  const personal = counts?.personalClients ?? 0;
+  const business = counts?.businessClients ?? 0;
 
   return (
     <>
@@ -44,11 +68,9 @@ const Home = () => {
             </a>
           </div>
         </div>
-
         <div className={styles.dashboard}>
           <Dashboard />
         </div>
-
         <div className={styles.tableSection}>
           <div className={styles.tableSectionHeader}>
             <div className={styles.tableTabs}>
@@ -58,7 +80,7 @@ const Home = () => {
                 }}
                 className={activeTab == "personal" ? styles.active : ""}
               >
-                Personal Clients
+                Personal Clients ({personal})
               </div>
               <div
                 onClick={() => {
@@ -66,7 +88,7 @@ const Home = () => {
                 }}
                 className={activeTab == "business" ? styles.active : ""}
               >
-                Business Clients
+                Business Clients ({business})
               </div>
             </div>
           </div>
