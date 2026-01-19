@@ -120,3 +120,181 @@ exports.getBirthday = async (req, res) => {
     });
   }
 };
+
+exports.listBusinessClientsByStatus = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(100, parseInt(req.query.limit || "500", 10));
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || "").trim();
+    const taxType = (req.query.taxType || "").toUpperCase();
+    const status = req.query.status || "";
+
+    if (!taxType || !status) {
+      return res.status(400).json({ error: "Missing taxType or status" });
+    }
+
+    const params = [];
+    const where = [];
+
+    // 1. Base Params
+    params.push(status); // $1
+    params.push(taxType); // $2
+
+    // 2. Search Param
+    if (search) {
+      params.push(`%${search}%`); // $3
+      where.push(`bc.business_name ILIKE $${params.length}`);
+    }
+
+    const whereSql = where.length ? `AND ${where.join(" AND ")}` : "";
+
+    // 3. Prepare Data Params
+    const dataParams = [...params];
+    dataParams.push(limit); // $Next
+    dataParams.push(offset); // $Next + 1
+
+    // 4. Data Query
+    // FIX: Changed 'tax_records' to 'business_tax_records'
+    const dataSql = `
+      SELECT DISTINCT
+        bc.id,
+        bc.business_name,
+        bc.contact_name,
+        bc.email,
+        bc.phone_cell
+      FROM business_clients bc
+      INNER JOIN business_tax_records tr 
+        ON bc.id = tr.business_id 
+      WHERE 
+        tr.status = $1 
+        AND tr.tax_type = $2
+        ${whereSql}
+      ORDER BY bc.business_name ASC
+      LIMIT $${dataParams.length - 1} 
+      OFFSET $${dataParams.length}
+    `;
+
+    const dataRes = await pool.query(dataSql, dataParams);
+
+    // 5. Count Query
+    // FIX: Changed 'tax_records' to 'business_tax_records'
+    const countSql = `
+      SELECT COUNT(DISTINCT bc.id) 
+      FROM business_clients bc
+      INNER JOIN business_tax_records tr 
+        ON bc.id = tr.business_id 
+      WHERE 
+        tr.status = $1 
+        AND tr.tax_type = $2
+        ${whereSql}
+    `;
+
+    const countRes = await pool.query(countSql, params);
+
+    res.json({
+      clients: dataRes.rows.map((r) => r.business_name),
+      data: dataRes.rows,
+      meta: {
+        total: Number(countRes.rows[0].count),
+        page,
+        per_page: limit,
+      },
+    });
+  } catch (err) {
+    console.error("listClientsByStatus error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.listPersonalClientsByStatus = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(100, parseInt(req.query.limit || "500", 10));
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || "").trim();
+    const status = req.query.status || "";
+
+    // For Personal clients, we might not need taxType since usually it's just T1
+    // But we check status is present
+    if (!status) {
+      return res.status(400).json({ error: "Missing status parameter" });
+    }
+
+    const params = [];
+    const where = [];
+
+    // 1. Base Param: Status
+    params.push(status); // $1
+
+    // 2. Search Param (Search First Name or Last Name)
+    if (search) {
+      params.push(`%${search}%`); // $2
+      where.push(
+        `(c.first_name ILIKE $${params.length} OR c.last_name ILIKE $${params.length})`
+      );
+    }
+
+    const whereSql = where.length ? `AND ${where.join(" AND ")}` : "";
+
+    // 3. Prepare Data Query Params
+    const dataParams = [...params];
+    dataParams.push(limit); // $Next
+    dataParams.push(offset); // $Next + 1
+
+    // 4. Data Query
+    // We INNER JOIN 'clients' with 'tax_records'
+    // DISTINCT ensures if a client has multiple years 'InProgress', they only appear once.
+    const dataSql = `
+      SELECT DISTINCT
+        c.id,
+        c.first_name,
+        c.last_name,
+        c.email,
+        c.phone
+      FROM clients c
+      INNER JOIN tax_records tr 
+        ON c.id = tr.client_id 
+      WHERE 
+        tr.tax_status = $1 
+        ${whereSql}
+      ORDER BY c.first_name ASC, c.last_name ASC
+      LIMIT $${dataParams.length - 1} 
+      OFFSET $${dataParams.length}
+    `;
+
+    const dataRes = await pool.query(dataSql, dataParams);
+
+    // 5. Count Query
+    const countSql = `
+      SELECT COUNT(DISTINCT c.id) 
+      FROM clients c
+      INNER JOIN tax_records tr 
+        ON c.id = tr.client_id 
+      WHERE 
+        tr.tax_status = $1 
+        ${whereSql}
+    `;
+
+    const countRes = await pool.query(countSql, params);
+
+    // 6. Response
+    // Map first_name + last_name for the simple list
+    const clientList = dataRes.rows.map(
+      (r) => `${r.first_name} ${r.last_name}`
+    );
+
+    res.json({
+      clients: clientList,
+      data: dataRes.rows,
+      meta: {
+        total: Number(countRes.rows[0].count),
+        page,
+        per_page: limit,
+      },
+    });
+  } catch (err) {
+    console.error("listPersonalClientsByStatus error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};

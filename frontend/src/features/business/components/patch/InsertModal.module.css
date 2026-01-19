@@ -255,13 +255,11 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  background: #333333;
   color: white;
   transition: all 0.2s;
 }
 
 .submitButton:hover {
-  background: #1d4ed8;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 

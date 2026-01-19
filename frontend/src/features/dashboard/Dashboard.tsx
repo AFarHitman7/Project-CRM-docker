@@ -4,11 +4,7 @@ import PersonalTaxStatusCard from "./components/PersonalTaxStatusCard";
 import TotalClientsCard from "./components/TotalClientsCard";
 import BirthdayCard from "./components/BirthdayCard";
 
-interface DashboardProps {
-  onStatusClick: (status: string) => void;
-}
-
-export default function Dashboard({ onStatusClick }: DashboardProps) {
+export default function Dashboard() {
   return (
     <>
       <div className={styles.dashboard}>
@@ -17,7 +13,7 @@ export default function Dashboard({ onStatusClick }: DashboardProps) {
             <TotalClientsCard />
           </div>
           <div className={styles.dashCard}>
-            <PersonalTaxStatusCard onStatusClick={onStatusClick} />
+            <PersonalTaxStatusCard />
           </div>
         </section>
         <section className={styles.dashSection}>

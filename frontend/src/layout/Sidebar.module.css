@@ -7,18 +7,16 @@
   gap: 3rem;
   height: 100vh;
   flex-direction: column;
-  background-color: #2F3F4C;
-  color:#FFFFFF;
+  background-color: #2f3f4c;
+  color: #ffffff;
   width: 265px;
   padding: 1rem;
   font-family: "Poppins", sans-serif;
- 
 }
 
 .topSection {
   display: flex;
   justify-content: center;
-  align-items: center;
   flex-direction: column;
   width: 100%;
   gap: 0.8rem;
@@ -32,6 +30,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: 1rem;
 }
 
 .logo img {
@@ -64,7 +63,7 @@
 
 .nav ul li:hover {
   background-color: white;
-  color:black;
+  color: black;
 }
 
 .active {
@@ -80,7 +79,7 @@
 }
 .footer button {
   color: white;
-  background-color: #2F3F4C;
+  background-color: #2f3f4c;
 }
 
 .footer button:hover {

@@ -687,6 +687,7 @@ export default function BusinessDetails() {
                       )}
 
                       {/* RECORDS TABLE */}
+                      {/* RECORDS TABLE */}
                       {filteredRecords.length > 0 ? (
                         <div className={styles.tableContainer}>
                           <table className={styles.table}>
@@ -697,20 +698,17 @@ export default function BusinessDetails() {
                                   <th>Year</th>
                                 )}
 
-                                {/* Period - shown for HST (monthly/quarterly) and WSIB */}
+                                {/* Period - shown for HST and WSIB */}
                                 {(tp.tax_type === "HST" ||
                                   tp.tax_type === "WSIB") && <th>Period</th>}
 
-                                {/* From/To - only for HST Quarterly */}
-                                {tp.tax_type === "HST" &&
-                                  tp.frequency &&
-                                  tp.frequency.toLowerCase() ===
-                                    "quarterly" && (
-                                    <>
-                                      <th>From</th>
-                                      <th>To</th>
-                                    </>
-                                  )}
+                                {/* --- CHANGED: Show From/To for ALL HST --- */}
+                                {tp.tax_type === "HST" && (
+                                  <>
+                                    <th>From</th>
+                                    <th>To</th>
+                                  </>
+                                )}
 
                                 {/* Slip Information - only for PAYROLL */}
                                 {tp.tax_type === "PAYROLL" && <th>Slips</th>}
@@ -744,24 +742,21 @@ export default function BusinessDetails() {
                                     <td>{r.tax_period || "—"}</td>
                                   )}
 
-                                  {/* From/To dates for HST Quarterly */}
-                                  {tp.tax_type === "HST" &&
-                                    tp.frequency &&
-                                    tp.frequency.toLowerCase() ===
-                                      "quarterly" && (
-                                      <>
-                                        <td>
-                                          {r.from_date
-                                            ? formatDate(r.from_date)
-                                            : "—"}
-                                        </td>
-                                        <td>
-                                          {r.to_date
-                                            ? formatDate(r.to_date)
-                                            : "—"}
-                                        </td>
-                                      </>
-                                    )}
+                                  {/* --- CHANGED: Show From/To for ALL HST --- */}
+                                  {tp.tax_type === "HST" && (
+                                    <>
+                                      <td>
+                                        {r.from_date
+                                          ? formatDate(r.from_date)
+                                          : "—"}
+                                      </td>
+                                      <td>
+                                        {r.to_date
+                                          ? formatDate(r.to_date)
+                                          : "—"}
+                                      </td>
+                                    </>
+                                  )}
 
                                   {/* Slip Information for PAYROLL */}
                                   {tp.tax_type === "PAYROLL" && (

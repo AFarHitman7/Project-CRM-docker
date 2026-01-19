@@ -14,11 +14,6 @@ const Home = () => {
     "personal"
   );
 
-  // Handler to update search when a status is clicked
-  const handleStatusClick = (status: string) => {
-    setSearch(status);
-  };
-
   return (
     <>
       <div className={styles.home}>
@@ -51,7 +46,7 @@ const Home = () => {
         </div>
 
         <div className={styles.dashboard}>
-          <Dashboard onStatusClick={handleStatusClick} />
+          <Dashboard />
         </div>
 
         <div className={styles.tableSection}>

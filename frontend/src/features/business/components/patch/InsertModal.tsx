@@ -128,7 +128,8 @@ export default function InsertBusinessResourceModal({
     createdBy: user?.id || "",
   });
 
-  const handleCreateShareholder = async () => {
+  const handleCreateShareholder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!shareholderForm.share_percentage) {
       alert("Share percentage required");
       return;
@@ -215,7 +216,8 @@ export default function InsertBusinessResourceModal({
     }
   };
 
-  const handleAddNote = async () => {
+  const handleAddNote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!noteForm.note) {
       alert("A note is required");
       return;
@@ -309,7 +311,6 @@ export default function InsertBusinessResourceModal({
   }, [activeTaxTab, taxProfiles, visible]);
 
   /* ================= AUTO-DERIVE TAX YEAR FOR RENEWAL ================= */
-  // Whenever updateRenewal changes, if it is Annual Renewal, update taxYear
   useEffect(() => {
     if (activeTaxTab === "ANNUAL_RENEWAL" && form.updateRenewal) {
       const year = new Date(form.updateRenewal).getFullYear();
@@ -346,19 +347,19 @@ export default function InsertBusinessResourceModal({
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     if (!activeProfile) {
       alert("No tax profile exists for this tax type");
       return;
     }
 
-    // Tax year is NOT required for ANNUAL_RENEWAL (we auto-derived it, but if it fails, we let it pass)
     if (activeTaxTab !== "ANNUAL_RENEWAL" && !form.taxYear) {
       alert("Tax year is required");
       return;
     }
 
-    // If status is FiledOn, require amount and confirmation number
     if (form.status === "FiledOn" || form.status === "ReadyForReview") {
       if (!form.amount) {
         alert("Amount is required");
@@ -425,7 +426,8 @@ export default function InsertBusinessResourceModal({
     handleClose();
   };
 
-  const handleUploadDocument = async () => {
+  const handleUploadDocument = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedFile || !createdTaxRecordId) {
       alert("Select a file");
       return;
@@ -462,32 +464,39 @@ export default function InsertBusinessResourceModal({
     }
   };
 
-  function getPrimaryAction() {
+  // Determine button properties based on active tab and state
+  function getButtonProps() {
     if (activeTab === "notes") {
       return {
+        type: "submit" as const,
+        form: "note-form",
         label: "Add Note",
-        onClick: handleAddNote,
+        onClick: undefined,
       };
     }
 
     if (activeTab === "shareholders") {
       return {
+        type: "submit" as const,
+        form: "shareholder-form",
         label: "Add Shareholder",
-        onClick: handleCreateShareholder,
+        onClick: undefined,
       };
     }
 
-    // tax tab
+    // TAX TAB LOGIC
     if (taxRecordCreated) {
-      // Only show upload if status is FiledOn
       if (form.status === "FiledOn") {
         return {
+          type: "submit" as const,
+          form: "upload-form",
           label: "Upload Document",
-          onClick: handleUploadDocument,
+          onClick: undefined,
         };
       }
-      // If not FiledOn, just close
       return {
+        type: "button" as const,
+        form: undefined,
         label: "Done",
         onClick: () => {
           onSuccess();
@@ -497,12 +506,14 @@ export default function InsertBusinessResourceModal({
     }
 
     return {
+      type: "submit" as const,
+      form: "tax-form",
       label: "Create Tax Record",
-      onClick: handleSubmit,
+      onClick: undefined,
     };
   }
 
-  const primaryAction = getPrimaryAction();
+  const buttonProps = getButtonProps();
 
   if (!visible) return null;
 
@@ -578,7 +589,12 @@ export default function InsertBusinessResourceModal({
                       No tax profile exists for {activeTaxTab}.
                     </div>
                   ) : (
-                    <div className={styles.form}>
+                    /* ====== WRAP TAX INPUTS IN FORM ====== */
+                    <form
+                      id="tax-form"
+                      className={styles.form}
+                      onSubmit={handleSubmit}
+                    >
                       <h3>{activeTaxTab} Tax Record</h3>
 
                       {/* ================= HST ================= */}
@@ -593,6 +609,7 @@ export default function InsertBusinessResourceModal({
                             <label>Tax Year *</label>
                             <input
                               value={form.taxYear}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, taxYear: e.target.value })
                               }
@@ -601,9 +618,10 @@ export default function InsertBusinessResourceModal({
 
                           {activeProfile.frequency === "monthly" && (
                             <div className={styles.formField}>
-                              <label>Month</label>
+                              <label>Month *</label>
                               <select
                                 value={form.taxPeriod}
+                                required
                                 onChange={(e) =>
                                   setForm({
                                     ...form,
@@ -611,6 +629,9 @@ export default function InsertBusinessResourceModal({
                                   })
                                 }
                               >
+                                <option value="" disabled>
+                                  Select a Month
+                                </option>
                                 {MONTHS.map((m) => (
                                   <option key={m} value={m}>
                                     {m}
@@ -641,10 +662,11 @@ export default function InsertBusinessResourceModal({
                           )}
 
                           <div className={styles.formField}>
-                            <label>From Date</label>
+                            <label>From Date*</label>
                             <input
                               type="date"
                               value={form.fromDate}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, fromDate: e.target.value })
                               }
@@ -652,10 +674,11 @@ export default function InsertBusinessResourceModal({
                           </div>
 
                           <div className={styles.formField}>
-                            <label>To Date</label>
+                            <label>To Date*</label>
                             <input
                               type="date"
                               value={form.toDate}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, toDate: e.target.value })
                               }
@@ -676,6 +699,7 @@ export default function InsertBusinessResourceModal({
                             <label>Tax Year *</label>
                             <input
                               value={form.taxYear}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, taxYear: e.target.value })
                               }
@@ -691,6 +715,7 @@ export default function InsertBusinessResourceModal({
                             <label>Tax Year *</label>
                             <input
                               value={form.taxYear}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, taxYear: e.target.value })
                               }
@@ -756,6 +781,7 @@ export default function InsertBusinessResourceModal({
                             <label>Tax Year *</label>
                             <input
                               value={form.taxYear}
+                              required
                               onChange={(e) =>
                                 setForm({ ...form, taxYear: e.target.value })
                               }
@@ -881,25 +907,27 @@ export default function InsertBusinessResourceModal({
                           }
                         />
                       </div>
-                    </div>
+                    </form>
                   )}
                 </>
               ) : (
                 <div className={styles.form}>
                   {form.status === "FiledOn" ? (
-                    <>
+                    /* ====== WRAP UPLOAD INPUT IN FORM ====== */
+                    <form id="upload-form" onSubmit={handleUploadDocument}>
                       <h3>Upload Filing Document</h3>
                       <div className={styles.formField}>
                         <label>PDF Attachment *</label>
                         <input
                           type="file"
+                          required
                           accept="application/pdf"
                           onChange={(e) =>
                             e.target.files && setSelectedFile(e.target.files[0])
                           }
                         />
                       </div>
-                    </>
+                    </form>
                   ) : (
                     <>
                       <h3>Tax Record Created Successfully</h3>
@@ -916,7 +944,12 @@ export default function InsertBusinessResourceModal({
 
           {activeTab === "shareholders" && (
             <div className={styles.tabContent}>
-              <div className={styles.form}>
+              {/* ====== WRAP SHAREHOLDER INPUTS IN FORM ====== */}
+              <form
+                id="shareholder-form"
+                className={styles.form}
+                onSubmit={handleCreateShareholder}
+              >
                 <h3>Add Shareholder</h3>
 
                 {/* MODE SELECT */}
@@ -937,10 +970,11 @@ export default function InsertBusinessResourceModal({
                 {/* EXISTING CLIENT */}
                 {shareholderMode === "existing" && (
                   <div className={styles.formField}>
-                    <label>Client ID</label>
+                    <label>Client ID *</label>
                     <input
-                      placeholder="Client UUID (Get from URL of existing client)"
+                      placeholder="Client UUID"
                       value={shareholderForm.client_id}
+                      required
                       onChange={(e) =>
                         setShareholderForm({
                           ...shareholderForm,
@@ -958,6 +992,7 @@ export default function InsertBusinessResourceModal({
                       <label>First Name *</label>
                       <input
                         value={shareholderForm.first_name}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -971,6 +1006,7 @@ export default function InsertBusinessResourceModal({
                       <label>Last Name *</label>
                       <input
                         value={shareholderForm.last_name}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -985,6 +1021,7 @@ export default function InsertBusinessResourceModal({
                       <input
                         type="date"
                         value={shareholderForm.dob}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1000,6 +1037,7 @@ export default function InsertBusinessResourceModal({
                         inputMode="numeric"
                         placeholder="9-digit SIN"
                         value={shareholderForm.sin}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1031,6 +1069,7 @@ export default function InsertBusinessResourceModal({
                       <label>Full Name *</label>
                       <input
                         value={shareholderForm.full_name}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1045,6 +1084,7 @@ export default function InsertBusinessResourceModal({
                       <input
                         type="date"
                         value={shareholderForm.dob}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1060,6 +1100,7 @@ export default function InsertBusinessResourceModal({
                         inputMode="numeric"
                         placeholder="9-digit SIN"
                         value={shareholderForm.sin}
+                        required
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1078,6 +1119,7 @@ export default function InsertBusinessResourceModal({
                     type="number"
                     max={100}
                     step="0.01"
+                    required
                     value={shareholderForm.share_percentage}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -1089,12 +1131,17 @@ export default function InsertBusinessResourceModal({
                     }}
                   />
                 </div>
-              </div>
+              </form>
             </div>
           )}
           {activeTab === "notes" && (
             <div className={styles.tabContent}>
-              <div className={styles.form}>
+              {/* ====== WRAP NOTES INPUT IN FORM ====== */}
+              <form
+                id="note-form"
+                className={styles.form}
+                onSubmit={handleAddNote}
+              >
                 <h3>Add New Note</h3>
                 <div className={styles.formRow}>
                   <div
@@ -1104,6 +1151,7 @@ export default function InsertBusinessResourceModal({
                       placeholder="Write your note here"
                       className={styles.notesArea}
                       value={noteForm.note}
+                      required
                       onChange={(e) =>
                         setNoteForm({ ...noteForm, note: e.target.value })
                       }
@@ -1111,7 +1159,7 @@ export default function InsertBusinessResourceModal({
                     />
                   </div>
                 </div>
-              </div>
+              </form>
             </div>
           )}
         </div>
@@ -1140,12 +1188,13 @@ export default function InsertBusinessResourceModal({
             )}
 
           <button
-            type="button"
+            type={buttonProps.type}
+            form={buttonProps.form}
             className={styles.submitButton}
-            onClick={primaryAction.onClick}
+            onClick={buttonProps.onClick}
             disabled={loading}
           >
-            {loading ? "Processing…" : primaryAction.label}
+            {loading ? "Processing…" : buttonProps.label}
           </button>
         </div>
       </div>

@@ -4,6 +4,8 @@ const {
   getDashboardCounts,
   getStatusCounts,
   getBirthday,
+  listBusinessClientsByStatus,
+  listPersonalClientsByStatus,
 } = require("../controllers/dashboard.controller");
 
 const router = express.Router();
@@ -11,5 +13,7 @@ const router = express.Router();
 router.get("/counts", authenticateToken, getDashboardCounts);
 router.get("/status-counts", authenticateToken, getStatusCounts);
 router.get("/birthday", authenticateToken, getBirthday);
+router.get("/bclient", authenticateToken, listBusinessClientsByStatus);
+router.get("/pclient", authenticateToken, listPersonalClientsByStatus);
 
 module.exports = router;

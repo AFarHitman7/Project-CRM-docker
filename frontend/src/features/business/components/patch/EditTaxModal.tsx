@@ -339,7 +339,7 @@ export default function EditTaxModal({
                 </div>
 
                 <div className={styles.formField}>
-                  <label>Tax Date</label>
+                  <label>Filing Date</label>
                   <input type="date" {...register("taxDate")} />
                 </div>
               </div>
