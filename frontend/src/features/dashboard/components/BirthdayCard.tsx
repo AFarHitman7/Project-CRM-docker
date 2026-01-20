@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // Assumes react-router-dom is installed
+import { useNavigate } from "react-router-dom";
 import styles from "./BirthdayCard.module.css";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { BsCalendar2DateFill } from "react-icons/bs";
@@ -12,7 +12,7 @@ interface BirthdayData {
   first_name: string;
   last_name: string;
   email: string;
-  phone?: string; // Added phone field
+  phone?: string;
   dob: string;
 }
 
@@ -20,13 +20,14 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const BirthdayCard: React.FC = () => {
   const navigate = useNavigate();
-  // We now store an array of arrays (groups of people sharing a birthday)
+
   const [birthdayGroups, setBirthdayGroups] = useState<BirthdayData[][]>([]);
   const [currentGroupIndex, setCurrentGroupIndex] = useState<number>(0);
+
+  // Initialize viewDate to today so the calendar starts on the current week
   const [viewDate, setViewDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Flat list for calendar dots logic
   const [allBirthdays, setAllBirthdays] = useState<BirthdayData[]>([]);
 
   // Helper: Calculate the next occurrence of a birthday
@@ -94,10 +95,8 @@ const BirthdayCard: React.FC = () => {
           setBirthdayGroups(groups);
           setCurrentGroupIndex(0);
 
-          // Set calendar view to the closest birthday group
-          if (groups.length > 0) {
-            setViewDate(getNextBirthdayDate(groups[0][0].dob));
-          }
+          // REMOVED: The logic that auto-updated setViewDate here.
+          // The calendar will now remain on the current week.
         }
       } catch (err) {
         console.error("Failed to fetch birthdays", err);
@@ -142,7 +141,7 @@ const BirthdayCard: React.FC = () => {
         return d.getDate() === b.getDate() && d.getMonth() === b.getMonth();
       });
 
-      // Highlight if this day matches the CURRENTLY displayed group
+      // Highlight if this day matches the CURRENTLY displayed group (in the list below)
       let isCurrentGroupDate = false;
       if (primaryPerson) {
         const b = new Date(primaryPerson.dob);
@@ -167,7 +166,7 @@ const BirthdayCard: React.FC = () => {
     <div className={styles.card}>
       <header className={styles.header}>
         <BsCalendar2DateFill size="1rem" />
-        <h3 className={styles.title}>Calendar</h3>
+        <h3 className={styles.title}>Upcoming Birthdays</h3>
       </header>
 
       <div className={styles.body}>
@@ -215,15 +214,15 @@ const BirthdayCard: React.FC = () => {
 
                   setSelectedDate(item.date);
 
+                  // Find which group corresponds to the clicked date
                   const groupIndex = birthdayGroups.findIndex((group) =>
                     isSameDayMonth(new Date(group[0].dob), item.date)
                   );
 
                   if (groupIndex !== -1) {
                     setCurrentGroupIndex(groupIndex);
-                    setViewDate(
-                      getNextBirthdayDate(birthdayGroups[groupIndex][0].dob)
-                    );
+                    // Only jump view if user explicitly clicks a date
+                    // setViewDate(getNextBirthdayDate(birthdayGroups[groupIndex][0].dob));
                   }
                 }}
               >
