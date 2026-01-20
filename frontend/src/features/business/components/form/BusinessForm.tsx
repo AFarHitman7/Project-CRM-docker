@@ -161,7 +161,6 @@ export default function BusinessForm() {
   const isFederation = incorporationJurisdiction === "Federal";
 
   const hstStatus = watch("hstStatus");
-  const wsibStatus = watch("wsibStatus");
 
   /* ================= ANNUAL RENEWAL PREFILL ================= */
   const incorporationDate = watch("incorporationDate");

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import styles from "./Navbar.module.css";
-import { IoNotificationsOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { IoMdContact } from "react-icons/io";
 

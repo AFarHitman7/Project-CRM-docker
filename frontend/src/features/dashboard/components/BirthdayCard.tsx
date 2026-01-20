@@ -107,23 +107,6 @@ const BirthdayCard: React.FC = () => {
     fetchBirthdays();
   }, []);
 
-  /* ---------------- NAVIGATION LOGIC ---------------- */
-
-  const handleNextGroup = () => {
-    if (birthdayGroups.length === 0) return;
-    const nextIndex = (currentGroupIndex + 1) % birthdayGroups.length;
-    setCurrentGroupIndex(nextIndex);
-    setViewDate(getNextBirthdayDate(birthdayGroups[nextIndex][0].dob));
-  };
-
-  const handlePrevGroup = () => {
-    if (birthdayGroups.length === 0) return;
-    const prevIndex =
-      (currentGroupIndex - 1 + birthdayGroups.length) % birthdayGroups.length;
-    setCurrentGroupIndex(prevIndex);
-    setViewDate(getNextBirthdayDate(birthdayGroups[prevIndex][0].dob));
-  };
-
   const currentGroup = birthdayGroups[currentGroupIndex] || [];
   const primaryPerson = currentGroup[0]; // Used for date display
 
