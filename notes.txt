@@ -1,0 +1,77 @@
+Personal
+++++++++
+
+DashBoard:
+	      Birthday calendar is not showing current date
+		  it showing birthday of only one person, it should have scrolling where it should show multple persons birthday if any
+		  able to select the date.
+		  
+		Business Tax and Personal Taxoverview should show current year counts not previous years.
+
+Insert New Data--> Add note Button is not visible
+Display of New personal page
+				- Camel case needed such as 
+				  Marital Status: married to Married
+				  others are Gender
+				-Notes Section 
+				 if date can be adjusted to one single line will good.
+				 suggestion: use different format (MM-DD-YY HH:MM:SS)
+				-Address
+				 Pin Code: All Upper Case. 
+
+				- On click of Open (switch personal profile)
+				  The notes section is changing from table to box. 
+				  keep in table format.
+				- Address display
+                  i believe little more spacing between lines will be good. Business can be taken as reference.
+
+Add new business client
+				WSIB--On selecting Registered option--it should automatically set to Quarterly (No need of Starting Quarter *)
+				Annual Renewal		move it to top
+									change the label from Annual Renewal (Federation) to Annual Renewal.
+				
+Insert Business Data
+				-The create tax record button is not visible.
+				-Insert busines data--
+									Corporation :
+				                        the amount should be visible only on Ready for review and Field on options.
+										refer the screenshot 1 - not allowing to save the data as confirmation field is not available. 
+										Note: The filing date and confirmation is only visible on "Filed on" is selected.
+											for ex: When Paperrecieved/In progress is selected on status field following fields be visible
+														Tax year, Status, Prepared by , notes
+													Ready for review
+														Tax year, Status, amount, Prepared by , notes
+													Filed on 
+														Tax year, Status, amount,Filing Date, Confirmation number(if any),Prepared by , notes
+													Confirmation number is not mandatory			
+										
+									WSIB:
+									    No need of Paperrecieved/In progress in Status field.
+										"Ready for review" is amount, quarter
+										the filing date and amount,Confirmation number should be visible only on Filed on options.
+										Confirmation number is not mandatory
+										
+									Annual_Renewal
+										Change the label of Annual_Renewal to Annual Renewal
+										On status field- just show filed on 
+										No need of Amount, Confirmation fields 
+									
+										
+									Payroll:
+                                        On filed on status it is still showing amount. (Needed field Ready for review & Filed on )
+										On filed on status the filing date should be visible.
+										Confirmation number is not mandatory										
+										
+				-Insert busines data-- Notes Tab to be removed as Corporation, HST,WSIB, annual has it.
+				
+				Display view (Business)
+								The open button for notes and files is not visible
+								if possible shareholder and Related business would be shifted to bottom after Taxes will be good.
+								
+- Notes edit or delete option should be given only Admin
+-Delete option should not visible for users except admin.
+-HST Document upload is not working. 
+-I'm not clear with Screnshot 2.
+
+
+				

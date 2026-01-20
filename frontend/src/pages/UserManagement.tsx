@@ -19,12 +19,13 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const token = localStorage.getItem("token");
+  // State for the password reset input
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
 
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
   const decoded = token ? JSON.parse(atob(token.split(".")[1])) : null;
-
   const currentUserId = decoded?.id;
   const currentUserRole = decoded?.role;
 
@@ -48,9 +49,13 @@ export default function UserManagement() {
       navigate("/");
       return;
     }
-
     fetchUsers();
   }, []);
+
+  // Clear password input when modal opens/closes
+  useEffect(() => {
+    setResetPasswordValue("");
+  }, [editingUser]);
 
   /* ================= DELETE ================= */
 
@@ -65,7 +70,7 @@ export default function UserManagement() {
     fetchUsers();
   }
 
-  /* ================= UPDATE ================= */
+  /* ================= UPDATE PROFILE ================= */
 
   async function handleUpdate() {
     if (!editingUser) return;
@@ -85,6 +90,43 @@ export default function UserManagement() {
 
     setEditingUser(null);
     fetchUsers();
+  }
+
+  /* ================= RESET PASSWORD ================= */
+
+  async function handlePasswordReset() {
+    if (!editingUser) return;
+    if (!resetPasswordValue) {
+      alert("Please enter a new password");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_URL}/api/user/${editingUser.userid}/change-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            newPassword: resetPasswordValue,
+          }),
+        }
+      );
+
+      if (res.ok) {
+        alert("Password updated successfully");
+        setResetPasswordValue(""); // Clear input
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to reset password");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error resetting password");
+    }
   }
 
   /* ================= CREATE ================= */
@@ -132,38 +174,47 @@ export default function UserManagement() {
           </tr>
         </thead>
         <tbody>
-          {users.map((u) => (
-            <tr key={u.userid}>
-              <td>{u.full_name}</td>
-              <td>{u.role}</td>
-              <td>{new Date(u.created_at).toLocaleDateString()}</td>
-              <td className={styles.actions}>
-                <button
-                  onClick={() => setEditingUser(u)}
-                  disabled={u.userid === currentUserId}
-                  title={
-                    u.userid === currentUserId
-                      ? "You cannot edit your own account here"
-                      : "Edit user"
-                  }
-                >
-                  Edit
-                </button>
+          {users.map((u) => {
+            const isSelf = u.userid === currentUserId;
+            const isAdmin = u.role === "admin";
 
-                <button
-                  onClick={() => handleDelete(u.userid)}
-                  disabled={u.userid === currentUserId}
-                  title={
-                    u.userid === currentUserId
-                      ? "You cannot delete your own account"
-                      : "Delete user"
-                  }
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+            return (
+              <tr key={u.userid}>
+                <td>{u.username}</td>
+                <td>{u.role}</td>
+                <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                <td className={styles.actions}>
+                  {/* EDIT BUTTON */}
+                  <button
+                    onClick={() => setEditingUser(u)}
+                    disabled={isSelf || isAdmin}
+                    title={
+                      isSelf
+                        ? "You cannot edit your own account here"
+                        : isAdmin
+                        ? "You cannot modify another admin"
+                        : "Edit user"
+                    }
+                  >
+                    Edit
+                  </button>
+
+                  {/* DELETE BUTTON */}
+                  <button
+                    onClick={() => handleDelete(u.userid)}
+                    disabled={isSelf}
+                    title={
+                      isSelf
+                        ? "You cannot delete your own account"
+                        : "Delete user"
+                    }
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -172,46 +223,86 @@ export default function UserManagement() {
         <div className={styles.modal}>
           <h3>Edit User</h3>
 
-          <input
-            value={editingUser.full_name}
-            onChange={(e) =>
-              setEditingUser({
-                ...editingUser,
-                full_name: e.target.value,
-              })
-            }
-            placeholder="Full name"
-          />
+          <div className={styles.formStack}>
+            {/* --- Profile Fields --- */}
+            <div>
+              <label className={styles.label}>Profile Info</label>
 
-          <input
-            value={editingUser.username}
-            onChange={(e) =>
-              setEditingUser({
-                ...editingUser,
-                username: e.target.value,
-              })
-            }
-            placeholder="Username"
-          />
+              <input
+                value={editingUser.full_name}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    full_name: e.target.value,
+                  })
+                }
+                placeholder="Full name"
+              />
 
-          <select
-            value={editingUser.role}
-            onChange={(e) =>
-              setEditingUser({
-                ...editingUser,
-                role: e.target.value,
-              })
-            }
-          >
-            <option>admin</option>
-            <option>Senior Accountant</option>
-            <option>Junior Accountant</option>
-            <option>Receptionist</option>
-          </select>
+              {/* Spacer for visual separation if needed, or rely on flex gap */}
+              <div style={{ height: "8px" }} />
 
-          <div className={styles.modalActions}>
-            <button onClick={handleUpdate}>Save</button>
-            <button onClick={() => setEditingUser(null)}>Cancel</button>
+              <input
+                value={editingUser.username}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    username: e.target.value,
+                  })
+                }
+                placeholder="Username"
+              />
+
+              <div style={{ height: "8px" }} />
+
+              <select
+                value={editingUser.role}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    role: e.target.value,
+                  })
+                }
+              >
+                <option>admin</option>
+                <option>Senior Accountant</option>
+                <option>Junior Accountant</option>
+                <option>Receptionist</option>
+              </select>
+
+              <button className={styles.saveProfileBtn} onClick={handleUpdate}>
+                Save Profile Info
+              </button>
+            </div>
+
+            {/* --- Security Fields (Password Reset) --- */}
+            <div className={styles.securitySection}>
+              <label className={styles.securityLabel}>
+                Security (Force Password Reset)
+              </label>
+              <div className={styles.passwordRow}>
+                <input
+                  type="text"
+                  value={resetPasswordValue}
+                  onChange={(e) => setResetPasswordValue(e.target.value)}
+                  placeholder="New Password"
+                  style={{ marginBottom: 0 }} // Override general input margin
+                />
+                <button
+                  className={styles.resetBtn}
+                  onClick={handlePasswordReset}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <button
+              className={styles.closeBtn}
+              onClick={() => setEditingUser(null)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
@@ -221,21 +312,22 @@ export default function UserManagement() {
         <form className={styles.modal} onSubmit={handleCreate}>
           <h3>Create User</h3>
 
-          <input name="full_name" placeholder="Full name" required />
-          <input name="username" placeholder="Username" required />
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            required
-          />
-
-          <select name="role">
-            <option>Junior Accountant</option>
-            <option>Senior Accountant</option>
-            <option>Receptionist</option>
-            <option>admin</option>
-          </select>
+          <div className={styles.formStack}>
+            <input name="full_name" placeholder="Full name" required />
+            <input name="username" placeholder="Username" required />
+            <input
+              name="password"
+              type="password"
+              placeholder="Password"
+              required
+            />
+            <select name="role">
+              <option>Junior Accountant</option>
+              <option>Senior Accountant</option>
+              <option>Receptionist</option>
+              <option>admin</option>
+            </select>
+          </div>
 
           <div className={styles.modalActions}>
             <button type="submit">Create</button>

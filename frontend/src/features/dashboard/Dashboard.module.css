@@ -12,10 +12,15 @@
   gap: 1rem;
 }
 
-.dashCard {
+.dashCard,
+.bCard {
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
   background-color: #fff;
   padding: 1rem;
   height: 100%;
   border-radius: 0.5rem;
+}
+
+.dashboard {
+  max-height: 400px;
 }

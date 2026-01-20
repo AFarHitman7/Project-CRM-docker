@@ -1,12 +1,9 @@
-/* BirthdayCard.module.css */
-
 .card {
   background: #ffffff;
-  border-radius: 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
-  /* Removed min-height to let it fit naturally, or keep 400px if you want alignment */
+  overflow: scroll;
 }
 
 .header {
@@ -32,7 +29,7 @@
 /* --- CALENDAR --- */
 .calendarContainer {
   background: #ffffff;
-  padding: 0 5px; /* Minimal padding */
+  padding: 0 5px;
   margin-bottom: 20px;
 }
 
@@ -70,11 +67,10 @@
   color: #111;
 }
 
-/* Unified Grid: 7 columns, 2 rows (Headers + Dates) */
 .weekGrid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  row-gap: 12px; /* Space between "Mon" and "10" */
+  row-gap: 12px;
   text-align: center;
 }
 
@@ -84,15 +80,14 @@
   color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  /* Optional: Keep underline if you liked it */
   text-decoration: underline;
   text-decoration-color: #e5e7eb;
   text-underline-offset: 4px;
 }
 
 .day {
-  font-size: 1rem; /* Slightly larger for the number */
-  color: #1f2937; /* Darker text for visibility */
+  font-size: 1rem;
+  color: #1f2937;
   font-weight: 500;
   height: 40px;
   width: 40px;
@@ -100,30 +95,53 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto;
-  border-radius: 12px; /* Rounded square shape */
+  border-radius: 12px;
   cursor: default;
+  position: relative;
 }
 
-/* Weekends */
+.day:hover {
+  background-color: #f3f4f6;
+}
+
+/* Optional: Slight highlight for the day currently being viewed in list */
+.selectedDateBox {
+  background-color: #f0f9ff; /* Very light blue */
+  color: #0369a1;
+  font-weight: 700;
+}
+
+.birthdayDot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444;
+  border-radius: 50%;
+}
+
 .weekend {
-  color: #ef4444; /* Red */
+  color: #ef4444;
   font-weight: 600;
 }
 
-/* Selected / Birthday */
-.selected {
-  background-color: #4f46e5; /* Indigo */
-  color: #ffffff !important;
-  font-weight: 700;
-  box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3);
+.today {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.today:hover {
+  background-color: #1e40af;
 }
 
-/* --- PROFILE --- */
+/* --- PROFILE LIST SECTION --- */
 .profileSection {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .divider {
@@ -132,15 +150,59 @@
   width: 100%;
 }
 
-.profileRow {
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.dateTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  line-height: 1.2;
+}
+
+.birthdayCount {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.usersList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px; /* Optional: Scroll if too many people */
+  overflow-y: auto;
+}
+
+.userRow {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.userRow:hover {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background-color: #374151;
   color: white;
@@ -148,46 +210,62 @@
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
-.profileInfo {
+.userInfo {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.profileName {
-  font-size: 1rem;
+.userName {
+  font-size: 0.95rem;
   font-weight: 700;
   color: #111827;
-  margin: 0;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.profileText {
-  font-size: 0.8rem;
+.contactDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contactItem {
+  font-size: 0.75rem;
   color: #6b7280;
-  margin: 2px 0 0 0;
-}
-
-.wishButton {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: #e9d5ff;
-  color: #6b21a8;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 10px;
-  border-radius: 12px;
-  transition: background-color 0.2s;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.wishButton:hover {
-  background-color: #d8b4fe;
-  color: #6b21a8;
+/* Dots */
+.indicators {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.activeDot {
+  background-color: #3b82f6;
 }
 
 .emptyState {

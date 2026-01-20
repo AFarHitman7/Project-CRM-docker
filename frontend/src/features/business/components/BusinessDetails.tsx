@@ -36,13 +36,20 @@ function formatMonthYear(dateStr?: string) {
 
 function formatDateTime(ts?: string) {
   if (!ts) return "—";
-  return new Date(ts).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return "—";
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  const MM = pad(d.getMonth() + 1);
+  const DD = pad(d.getDate());
+  const YY = String(d.getFullYear()).slice(-2);
+  const HH = pad(d.getHours());
+  const MMm = pad(d.getMinutes());
+  const SS = pad(d.getSeconds());
+
+  return `${MM}-${DD}-${YY} ${HH}:${MMm}:${SS}`;
 }
 
 export default function BusinessDetails() {
@@ -274,15 +281,13 @@ export default function BusinessDetails() {
     taxProfiles.some((tp: any) => tp.tax_type === t)
   );
 
-  function toCamelCaseText(str = "") {
-    return str
-      .toString()
-      .trim()
-      .toLowerCase()
-      .split(/[\s_-]+/) // split by space, _ or -
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  const toCapital = (s?: string) =>
+    typeof s === "string" && s.trim() ? s.toUpperCase() : "";
+
+  function toTitleCase(str = "") {
+    if (!str) return "";
+
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   return (
@@ -346,7 +351,10 @@ export default function BusinessDetails() {
                 label="Loyalty Since"
                 value={formatDate(business.loyalty_since)}
               />
-              <Field label="Referred By" value={business.referred_by} />
+              <Field
+                label="Referred By"
+                value={toTitleCase(business.referred_by)}
+              />
             </Grid>
           </Section>
 
@@ -427,19 +435,21 @@ export default function BusinessDetails() {
                         primaryAddress.address_line2,
                       ]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
+                        .map(toTitleCase)
                         .join(", ")}
                     </span>
                     <br />
                     <span className={styles.addressBottom}>
                       {[
-                        primaryAddress.city,
-                        primaryAddress.province,
-                        primaryAddress.postal_code,
-                        primaryAddress.country,
+                        primaryAddress.city && toTitleCase(primaryAddress.city),
+                        primaryAddress.province &&
+                          toTitleCase(primaryAddress.province),
+                        primaryAddress.postal_code &&
+                          toCapital(primaryAddress.postal_code),
+                        primaryAddress.country &&
+                          toTitleCase(primaryAddress.country),
                       ]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                   </div>
@@ -458,137 +468,26 @@ export default function BusinessDetails() {
                         mailingAddress.address_line2,
                       ]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
+                        .map(toTitleCase)
                         .join(", ")}
                     </span>
                     <br />
                     <span className={styles.addressBottom}>
                       {[
-                        mailingAddress.city,
-                        mailingAddress.province,
-                        mailingAddress.postal_code,
-                        mailingAddress.country,
+                        mailingAddress.city && toTitleCase(mailingAddress.city),
+                        mailingAddress.province &&
+                          toTitleCase(mailingAddress.province),
+                        mailingAddress.postal_code &&
+                          toCapital(mailingAddress.postal_code),
+                        mailingAddress.country &&
+                          toTitleCase(mailingAddress.country),
                       ]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                   </div>
                 </Section>
               )}
-            </div>
-          )}
-
-          {/* ================= SHAREHOLDERS ================= */}
-          {shareholders.length > 0 && (
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <h3 className={styles.sectionTitle}>Shareholders</h3>
-              </div>
-
-              <div className={styles.blockContainer}>
-                {shareholders.map((sh: any) => {
-                  const isStandalone = !sh.client_id;
-
-                  return (
-                    <div key={sh.id} className={styles.blockWithDelete}>
-                      <div className={styles.block}>
-                        {/* TYPE */}
-                        <span className={styles.tag}>
-                          {isStandalone ? "Standalone" : "Personal Client"}
-                        </span>
-
-                        {/* NAME */}
-                        <div className={styles.blockTitle}>
-                          {sh.full_name || "—"}
-                        </div>
-
-                        {/* DETAILS */}
-                        <Field
-                          label="DOB"
-                          value={sh.dob ? formatDate(sh.dob) : "—"}
-                        />
-
-                        <Field label="SIN" value={sh.sin_original} />
-
-                        <Field
-                          label="Share %"
-                          value={`${sh.share_percentage}%`}
-                        />
-
-                        <Field
-                          label="Linked Client"
-                          value={isStandalone ? "No" : "Yes"}
-                        />
-                      </div>
-
-                      {/* ACTIONS */}
-                      <div className={styles.buttonContainer}>
-                        {!isStandalone && (
-                          <button
-                            className={styles.editBtn}
-                            onClick={() =>
-                              navigate(`/personal/${sh.client_id}`)
-                            }
-                          >
-                            Open
-                          </button>
-                        )}
-
-                        <button
-                          className={styles.deleteItemBtn}
-                          onClick={() => handleDeleteShareholder(sh.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ================= RELATED BUSINESSES ================= */}
-          {relatedBusinesses.length > 0 && (
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <h3 className={styles.sectionTitle}>Related Businesses</h3>
-              </div>
-
-              <div className={styles.blockContainer}>
-                {relatedBusinesses.map((rb: any) => (
-                  <div key={rb.id} className={styles.blockWithDelete}>
-                    <div className={styles.block}>
-                      {/* TYPE TAG */}
-                      <span className={styles.tag}>Business</span>
-
-                      {/* NAME */}
-                      <div className={styles.blockTitle}>
-                        {rb.business_name || "—"}
-                      </div>
-
-                      {/* DETAILS */}
-                      <Field label="Business No." value={rb.business_number} />
-                      <Field label="Email" value={rb.email} />
-                      <Field
-                        label="Phone"
-                        value={rb.phone_cell || rb.phone || "—"}
-                      />
-                    </div>
-
-                    {/* ACTIONS */}
-                    <div className={styles.buttonContainer}>
-                      <button
-                        className={styles.editBtn}
-                        onClick={() => navigate(`/business/${rb.id}`)}
-                      >
-                        Open
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
 
@@ -609,7 +508,7 @@ export default function BusinessDetails() {
                     }`}
                     onClick={() => setActiveTaxType(type)}
                   >
-                    {type}
+                    {type != "ANNUAL_RENEWAL" ? type : "ANNUAL RENEWAL"}
                   </button>
                 ))}
               </div>
@@ -641,7 +540,7 @@ export default function BusinessDetails() {
                           {tp.frequency && (
                             <Field
                               label="Frequency"
-                              value={toCamelCaseText(tp.frequency)}
+                              value={toTitleCase(tp.frequency)}
                             />
                           )}
                           {tp.start_date && (
@@ -860,6 +759,119 @@ export default function BusinessDetails() {
             </div>
           )}
 
+          {/* ================= SHAREHOLDERS ================= */}
+          {shareholders.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h3 className={styles.sectionTitle}>Shareholders</h3>
+              </div>
+
+              <div className={styles.blockContainer}>
+                {shareholders.map((sh: any) => {
+                  const isStandalone = !sh.client_id;
+
+                  return (
+                    <div key={sh.id} className={styles.blockWithDelete}>
+                      <div className={styles.block}>
+                        {/* TYPE */}
+                        <span className={styles.tag}>
+                          {isStandalone ? "Standalone" : "Personal Client"}
+                        </span>
+
+                        {/* NAME */}
+                        <div className={styles.blockTitle}>
+                          {sh.full_name || "—"}
+                        </div>
+
+                        {/* DETAILS */}
+                        <Field
+                          label="DOB"
+                          value={sh.dob ? formatDate(sh.dob) : "—"}
+                        />
+
+                        <Field label="SIN" value={sh.sin_original} />
+
+                        <Field
+                          label="Share %"
+                          value={`${sh.share_percentage}%`}
+                        />
+
+                        <Field
+                          label="Linked Client"
+                          value={isStandalone ? "No" : "Yes"}
+                        />
+                      </div>
+
+                      {/* ACTIONS */}
+                      <div className={styles.buttonContainer}>
+                        {!isStandalone && (
+                          <button
+                            className={styles.editBtn}
+                            onClick={() =>
+                              navigate(`/personal/${sh.client_id}`)
+                            }
+                          >
+                            Open
+                          </button>
+                        )}
+
+                        <button
+                          className={styles.deleteItemBtn}
+                          onClick={() => handleDeleteShareholder(sh.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ================= RELATED BUSINESSES ================= */}
+          {relatedBusinesses.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h3 className={styles.sectionTitle}>Related Businesses</h3>
+              </div>
+
+              <div className={styles.blockContainer}>
+                {relatedBusinesses.map((rb: any) => (
+                  <div key={rb.id} className={styles.blockWithDelete}>
+                    <div className={styles.block}>
+                      {/* TYPE TAG */}
+                      <span className={styles.tag}>Business</span>
+
+                      {/* NAME */}
+                      <div className={styles.blockTitle}>
+                        {rb.business_name || "—"}
+                      </div>
+
+                      {/* DETAILS */}
+                      <Field label="Business No." value={rb.business_number} />
+                      <Field label="Email" value={rb.email} />
+                      <Field
+                        label="Phone"
+                        value={rb.phone_cell || rb.phone || "—"}
+                      />
+                    </div>
+
+                    {/* ACTIONS */}
+                    <div className={styles.buttonContainer}>
+                      <button
+                        className={styles.editBtn}
+                        onClick={() => navigate(`/business/${rb.id}`)}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ================= NOTES ================= */}
           {notes.length > 0 && (
             <div className={styles.section}>
@@ -872,6 +884,7 @@ export default function BusinessDetails() {
                   <thead>
                     <tr>
                       <th>Note</th>
+                      <th>Type</th>
                       <th>Created By</th>
                       <th>Date</th>
                       <th>Action</th>
@@ -881,67 +894,70 @@ export default function BusinessDetails() {
                     {(showAllNotes ? notes : notes.slice(0, 5)).map(
                       (note: any) => (
                         <tr key={note.id}>
-                          <td>
-                            <td>
-                              {editingNote?.id === note.id ? (
-                                <textarea
-                                  value={noteDraft}
-                                  onChange={(e) => setNoteDraft(e.target.value)}
-                                  rows={2}
-                                  className={styles.noteEditInput}
-                                  autoFocus
-                                />
-                              ) : (
-                                note.note_text
-                              )}
-                            </td>
+                          <td className={styles.noteCell}>
+                            {editingNote?.id === note.id ? (
+                              <textarea
+                                value={noteDraft}
+                                onChange={(e) => setNoteDraft(e.target.value)}
+                                rows={2}
+                                className={styles.noteEditInput}
+                                autoFocus
+                              />
+                            ) : (
+                              note.note_text
+                            )}
                           </td>
+                          <td>{note.type}</td>
                           <td>{note.created_by}</td>
                           <td>{formatDateTime(note.created_at)}</td>
                           <td>
-                            <div className={styles.buttonContainer}>
-                              {editingNote?.id === note.id ? (
-                                <>
-                                  <button
-                                    className={styles.editBtn}
-                                    onClick={handleEditNoteSave}
-                                  >
-                                    Save
-                                  </button>
+                            {note.type === "Business" ? (
+                              <div className={styles.buttonContainer}>
+                                {editingNote?.id === note.id ? (
+                                  <>
+                                    <button
+                                      className={styles.editBtn}
+                                      onClick={handleEditNoteSave}
+                                    >
+                                      Save
+                                    </button>
 
-                                  <button
-                                    className={styles.deleteBtn}
-                                    onClick={() => {
-                                      setEditingNote(null);
-                                      setNoteDraft("");
-                                    }}
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    className={styles.editBtn}
-                                    title="Edit note"
-                                    onClick={() => {
-                                      setEditingNote(note);
-                                      setNoteDraft(note.note_text);
-                                    }}
-                                  >
-                                    <MdEdit size="1rem" />
-                                  </button>
+                                    <button
+                                      className={styles.deleteBtn}
+                                      onClick={() => {
+                                        setEditingNote(null);
+                                        setNoteDraft("");
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      className={styles.editBtn}
+                                      title="Edit note"
+                                      onClick={() => {
+                                        setEditingNote(note);
+                                        setNoteDraft(note.note_text);
+                                      }}
+                                    >
+                                      <MdEdit size="1rem" />
+                                    </button>
 
-                                  <button
-                                    className={styles.deleteBtn}
-                                    title="Delete note"
-                                    onClick={() => handleDeleteNote(note.id)}
-                                  >
-                                    <MdDelete size="1rem" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                    <button
+                                      className={styles.deleteBtn}
+                                      title="Delete note"
+                                      onClick={() => handleDeleteNote(note.id)}
+                                    >
+                                      <MdDelete size="1rem" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : (
+                              <span>—</span>
+                            )}
                           </td>
                         </tr>
                       )

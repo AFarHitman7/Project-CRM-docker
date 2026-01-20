@@ -543,19 +543,38 @@ async function getBusiness(req, res) {
       [businessId]
     );
 
-    /* ================= NOTES ================= */
-
-    const notesRes = await pool.query(
+    /* ================= BUSINESS NOTES ================= */
+    const businessNotesRes = await pool.query(
       `SELECT 
-    nt.id AS id, 
-    nt.created_at AS created_at, 
-    nt.note_text AS note_text,
-    au.full_name AS created_by
-FROM business_notes nt
-LEFT JOIN app_users au ON nt.created_by = au.id
-WHERE nt.business_id = $1
-ORDER BY nt.created_at DESC`,
+        nt.id AS id, 
+        nt.created_at AS created_at, 
+        nt.note_text AS note_text,
+        au.full_name AS created_by,
+        'Business' AS type
+      FROM business_notes nt
+      LEFT JOIN app_users au ON nt.created_by = au.id
+      WHERE nt.business_id = $1`,
       [businessId]
+    );
+
+    /* ================= TAX NOTES ================= */
+    const taxNotesRes = await pool.query(
+      `SELECT
+        tn.id,
+        tn.created_at,
+        tn.note_text,
+        au.full_name AS created_by,
+        CONCAT(tr.tax_type, ' ', tr.tax_year) AS type
+      FROM business_tax_notes tn
+      LEFT JOIN app_users au ON tn.created_by = au.id
+      LEFT JOIN business_tax_records tr ON tr.id = tn.business_tax_record_id
+      WHERE tr.business_id = $1`,
+      [businessId]
+    );
+
+    /* ================= COMBINE NOTES ================= */
+    const allNotes = [...businessNotesRes.rows, ...taxNotesRes.rows].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
 
     /* ================= HYDRATION ================= */
@@ -593,7 +612,7 @@ ORDER BY nt.created_at DESC`,
       shareholders,
       relatedBusinesses,
       tax_profiles: taxProfiles,
-      notes: notesRes.rows,
+      notes: allNotes,
     });
   } catch (err) {
     console.error("getBusiness:", err);

@@ -1,5 +1,6 @@
 // controllers/profile.controller.js
 const { pool } = require("../database/db");
+const bcrypt = require("bcryptjs");
 
 exports.getProfile = async (req, res) => {
   try {
@@ -141,6 +142,45 @@ exports.deleteUser = async (req, res) => {
     return res.json({ deleted: true, userid: rows[0].id });
   } catch (err) {
     console.error("Error deleting user:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+exports.resetUserPassword = async (req, res) => {
+  try {
+    // Note: Role check is handled by middleware before reaching here
+
+    const targetUserId = req.params.id;
+    const { newPassword } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({ message: "New password is required" });
+    }
+
+    // 1. Hash the new password
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // 2. Update the password in the database
+    const updateSql = `
+      UPDATE app_users 
+      SET password_hash = $1 
+      WHERE id = $2
+      RETURNING id;
+    `;
+
+    const { rowCount } = await pool.query(updateSql, [newHash, targetUserId]);
+
+    if (rowCount === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ message: "User password has been reset successfully" });
+  } catch (err) {
+    console.error("Error resetting password:", err);
     return res.status(500).json({ error: err.message });
   }
 };

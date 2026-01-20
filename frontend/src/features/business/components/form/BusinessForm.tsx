@@ -429,6 +429,16 @@ export default function BusinessForm() {
                 inputMode="numeric"
               />
             </div>
+            {isFederation && (
+              <div className={styles.formField}>
+                <label htmlFor="annualRenewalDate">Annual Renewal Date</label>
+                <input
+                  id="annualRenewalDate"
+                  type="date"
+                  {...register("annualRenewalDate")}
+                />
+              </div>
+            )}
           </div>
         </section>
 
@@ -784,43 +794,7 @@ export default function BusinessForm() {
               </select>
             </div>
           </div>
-
-          {wsibStatus && (
-            <div className={styles.formRow}>
-              <div className={styles.formField}>
-                <label htmlFor="wsibStartingQuarter">Starting Quarter *</label>
-                <select
-                  {...register("wsibStartingQuarter", {
-                    required: wsibStatus ? "Quarter is required" : false,
-                  })}
-                >
-                  <option value="">Select quarter</option>
-                  <option value="Q1">Q1</option>
-                  <option value="Q2">Q2</option>
-                  <option value="Q3">Q3</option>
-                  <option value="Q4">Q4</option>
-                </select>
-              </div>
-            </div>
-          )}
         </section>
-
-        {isFederation && (
-          <section className={styles.formSection}>
-            <h3>Annual Renewal (Federation)</h3>
-
-            <div className={styles.formRow}>
-              <div className={styles.formField}>
-                <label htmlFor="annualRenewalDate">Renewal Date</label>
-                <input
-                  id="annualRenewalDate"
-                  type="date"
-                  {...register("annualRenewalDate")}
-                />
-              </div>
-            </div>
-          </section>
-        )}
 
         <section className={styles.formSection}>
           <h3>Notes</h3>

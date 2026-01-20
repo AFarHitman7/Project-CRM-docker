@@ -4,7 +4,6 @@ import { IoNotificationsOutline } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
 import { IoMdContact } from "react-icons/io";
 
-
 const Navbar = () => {
   const [user, setUser]: any = useState(null);
   const navigate = useNavigate();
@@ -23,12 +22,14 @@ const Navbar = () => {
       <h3>Welcome Back{user?.username ? `, ${user.username}` : ""}</h3>
 
       <div className={styles.actions}>
-        <div className={styles.notif}>
+        {/* <div className={styles.notif}>
           <IoNotificationsOutline size="1.6rem" />
-        </div>
+        </div> */}
 
         <div className={styles.profile} onClick={() => navigate("/profile")}>
-          <div className={styles.img}><IoMdContact size="device width" /></div>
+          <div className={styles.img}>
+            <IoMdContact size="device width" />
+          </div>
 
           <div className={styles.credentials}>
             <p className={styles.user}>{user?.username || "User"}</p>

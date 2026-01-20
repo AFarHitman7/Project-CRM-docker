@@ -238,10 +238,14 @@ export default function PersonalDetails() {
     }
   };
 
-  const toCapital = (s: any) =>
-    s
-      .toLowerCase()
-      .replace(/(^\w|[\s-_]\w)/g, (m: any) => m.trim().toUpperCase());
+  const toCapital = (s?: string) =>
+    typeof s === "string" && s.trim() ? s.toUpperCase() : "";
+
+  function toTitleCase(str = "") {
+    if (!str) return "";
+
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 
   function formatDate(dateString: string | null | undefined) {
     if (!dateString) return "N/A";
@@ -259,13 +263,20 @@ export default function PersonalDetails() {
   }
   function formatDateTime(ts?: string) {
     if (!ts) return "—";
-    return new Date(ts).toLocaleString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return "—";
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    const MM = pad(d.getMonth() + 1);
+    const DD = pad(d.getDate());
+    const YY = String(d.getFullYear()).slice(-2);
+    const HH = pad(d.getHours());
+    const MMm = pad(d.getMinutes());
+    const SS = pad(d.getSeconds());
+
+    return `${MM}-${DD}-${YY} ${HH}:${MMm}:${SS}`;
   }
 
   async function refreshClient() {
@@ -282,19 +293,6 @@ export default function PersonalDetails() {
   const activeTaxRecord = client.tax_records.find(
     (tr: any) => tr.id === activeTaxRecordId
   );
-
-//camel case function
-  function toCamelCaseText(str = "") {
-  return str
-    .toString()
-    .trim()
-    .toLowerCase()
-    .split(/[\s_-]+/)           // split by space, _ or -
-    .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 
   return (
     <div className={styles.mainSection}>
@@ -365,14 +363,20 @@ export default function PersonalDetails() {
             >
               <Field label="SIN" value={client.sin_original} />
               <Field label="DOB" value={formatDate(client.dob)} />
-              <Field label="Gender" value={client.gender} />
+              <Field label="Gender" value={toTitleCase(client.gender)} />
               <Field label="Phone" value={client.phone} />
               <Field label="Email" value={client.email} />
               <Field label="Fax" value={client.fax} />
-              <Field label="Status" value={latestTax?.tax_status} />
+              <Field
+                label="Status"
+                value={toTitleCase(latestTax?.tax_status)}
+              />
               <Field label="Tax Date" value={formatDate(latestTax?.tax_date)} />
               <Field label="Tax Year" value={latestTax?.tax_year} />
-              <Field label="Marital Status" value={client.marital_status} />
+              <Field
+                label="Marital Status"
+                value={toTitleCase(client.marital_status)}
+              />
               <Field
                 label="Date of Marriage"
                 value={formatDate(client.date_of_marriage)}
@@ -383,7 +387,10 @@ export default function PersonalDetails() {
               />
               <Field label="Created By" value={client.created_by_username} />
               <Field label="Created at" value={formatDate(client.created_at)} />
-              <Field label="Referred By" value={client.referred_by} />
+              <Field
+                label="Referred By"
+                value={toTitleCase(client.referred_by)}
+              />
             </div>
           </div>
 
@@ -402,19 +409,18 @@ export default function PersonalDetails() {
                     <span className={styles.addressTop}>
                       {[addr.address_line1, addr.address_line2]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
+                        .map(toTitleCase)
                         .join(", ")}
                     </span>
                     <br />
                     <span className={styles.addressBottom}>
                       {[
-                        addr.city,
-                        addr.province,
-                        addr.postal_code,
-                        addr.country,
+                        addr.city && toTitleCase(addr.city),
+                        addr.province && toTitleCase(addr.province),
+                        addr.postal_code && toCapital(addr.postal_code),
+                        addr.country && toTitleCase(addr.country),
                       ]
                         .filter(Boolean)
-                        .map(toCamelCaseText)
                         .join(", ")}
                     </span>
                   </div>
@@ -634,7 +640,9 @@ export default function PersonalDetails() {
                 {client.businesses.map((biz: any) => (
                   <div key={biz.business_id} className={styles.blockWithDelete}>
                     <div className={styles.block}>
-                      <span className={styles.tag}>{toCapital(biz.role)}</span>
+                      <span className={styles.tag}>
+                        {toTitleCase(biz.role)}
+                      </span>
 
                       <div className={styles.blockTitle}>
                         {biz.business_name}
@@ -742,19 +750,18 @@ export default function PersonalDetails() {
                       <span className={styles.addressTop}>
                         {[addr.address_line1, addr.address_line2]
                           .filter(Boolean)
-                          .map(toCamelCaseText)
+                          .map(toTitleCase)
                           .join(", ")}
                       </span>
                       <br />
                       <span className={styles.addressBottom}>
                         {[
-                          addr.city,
-                          addr.province,
-                          addr.postal_code,
-                          addr.country,
+                          addr.city && toTitleCase(addr.city),
+                          addr.province && toTitleCase(addr.province),
+                          addr.postal_code && toCapital(addr.postal_code),
+                          addr.country && toTitleCase(addr.country),
                         ]
                           .filter(Boolean)
-                          .map(toCamelCaseText)
                           .join(", ")}
                       </span>
                     </div>
@@ -825,32 +832,43 @@ export default function PersonalDetails() {
                 )}
               </div>
             )}
-            {/* NOTES WITH DELETE BUTTONS */}
-            {spouse.notes?.length !== 0 && (
+            {/* SPOUSE NOTES (TABLE) */}
+            {spouse.notes?.length > 0 && (
               <div className={styles.section}>
                 <div className={styles.sectionHeader}>
                   <h3 className={styles.sectionTitle}>Notes</h3>
                 </div>
-                <div className={styles.blockContainer}>
-                  {spouse.notes.map((note: any) => (
-                    <div key={note.id} className={styles.blockWithDelete}>
-                      <div className={styles.block}>
-                        <div>{note.note_text}</div>
-                        <div className={styles.italicTag}>
-                          -{note.created_by}
-                          <br />
-                          {formatDateTime(note.created_at)}
-                        </div>
-                      </div>
-                      <button
-                        className={styles.deleteItemBtn}
-                        onClick={() => handleDeleteNote(note.id)}
-                        title="Delete Note"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
+
+                <div className={styles.tableContainer}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Note</th>
+                        <th>Created By</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {spouse.notes.map((note: any) => (
+                        <tr key={note.id}>
+                          <td>{note.note_text}</td>
+                          <td>{note.created_by}</td>
+                          <td>{formatDateTime(note.created_at)}</td>
+                          <td>
+                            <button
+                              className={styles.deleteBtn}
+                              title="Delete note"
+                              onClick={() => handleDeleteNote(note.id)}
+                            >
+                              <MdDelete size="1rem" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -940,7 +958,7 @@ export default function PersonalDetails() {
                       {dep.first_name} {dep.last_name}
                     </td>
 
-                    <td>{toCapital(dep.relationship)}</td>
+                    <td>{toTitleCase(dep.relationship)}</td>
 
                     <td>{dep.gender || "—"}</td>
 

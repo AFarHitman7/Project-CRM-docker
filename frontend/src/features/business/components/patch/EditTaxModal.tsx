@@ -25,6 +25,21 @@ function getEffectiveFrequency(profile: any, taxType: string) {
   return String(profile.frequency).toLowerCase();
 }
 
+// Helper function to get available statuses based on tax type
+function getAvailableStatuses(taxType: string): string[] {
+  switch (taxType) {
+    case "ANNUAL_RENEWAL":
+      return ["FiledOn"];
+    case "PAYROLL":
+    case "WSIB":
+      return ["ReadyForReview", "FiledOn"];
+    case "HST":
+    case "CORPORATION":
+    default:
+      return ["PaperReceived", "InProgress", "ReadyForReview", "FiledOn"];
+  }
+}
+
 interface TaxForm {
   taxYear: number | "";
   taxPeriod: string;
@@ -317,41 +332,36 @@ export default function EditTaxModal({
                 </div>
               )}
 
-              {/* Row 5: Status & Tax Date */}
+              {/* Row 5: Status & Tax Date (Filing Date only shown when FiledOn) */}
               <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Status</label>
                   <select {...register("status")}>
-                    {/* CONDITIONAL OPTIONS FOR STATUS */}
-                    {isAnnualRenewal ? (
-                      <>
-                        <option value="PaperReceived">PaperReceived</option>
-                        <option value="FiledOn">FiledOn</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="InProgress">InProgress</option>
-                        <option value="ReadyForReview">ReadyForReview</option>
-                        <option value="PaperReceived">PaperReceived</option>
-                        <option value="FiledOn">FiledOn</option>
-                      </>
-                    )}
+                    {getAvailableStatuses(taxRecord.tax_type).map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div className={styles.formField}>
-                  <label>Filing Date</label>
-                  <input type="date" {...register("taxDate")} />
-                </div>
+                {/* FILING DATE ONLY SHOWN WHEN STATUS IS FiledOn */}
+                {currentStatus === "FiledOn" && (
+                  <div className={styles.formField}>
+                    <label>Filing Date *</label>
+                    <input
+                      type="date"
+                      {...register("taxDate", { required: true })}
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Row 6: Confirmation Number (Conditionally Rendered - NOT for Annual Renewal) */}
+              {/* Row 6: Confirmation Number (Conditionally Rendered - NOT for Annual Renewal, NOT required) */}
               {currentStatus === "FiledOn" && !isAnnualRenewal && (
                 <div className={styles.formField}>
-                  <label>Confirmation Number *</label>
-                  <input
-                    {...register("confirmationNumber", { required: true })}
-                  />
+                  <label>Confirmation Number</label>
+                  <input {...register("confirmationNumber")} />
                 </div>
               )}
             </div>

@@ -22,7 +22,7 @@ export default function Dashboard() {
           </div>
         </section>
         <section className={styles.dashSection}>
-          <div className={styles.dashCard}>
+          <div className={styles.bCard}>
             <BirthdayCard />
           </div>
         </section>

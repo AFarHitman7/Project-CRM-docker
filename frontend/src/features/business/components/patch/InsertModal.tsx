@@ -267,6 +267,20 @@ export default function InsertBusinessResourceModal({
     }));
   }
 
+  function getAvailableStatuses(taxType: TaxType): BusinessTaxForm["status"][] {
+    switch (taxType) {
+      case "ANNUAL_RENEWAL":
+        return ["FiledOn"];
+      case "PAYROLL":
+      case "WSIB":
+        return ["ReadyForReview", "FiledOn"];
+      case "HST":
+      case "CORPORATION":
+      default:
+        return ["PaperReceived", "InProgress", "ReadyForReview", "FiledOn"];
+    }
+  }
+
   /* ================= TAX PROFILE RESOLUTION ================= */
 
   useEffect(() => {
@@ -363,10 +377,6 @@ export default function InsertBusinessResourceModal({
     if (form.status === "FiledOn" || form.status === "ReadyForReview") {
       if (!form.amount) {
         alert("Amount is required");
-        return;
-      }
-      if (!form.confirmationNumber) {
-        alert("Confirmation number is required when status is FiledOn");
         return;
       }
     }
@@ -836,10 +846,11 @@ export default function InsertBusinessResourceModal({
                             })
                           }
                         >
-                          <option value="InProgress">InProgress</option>
-                          <option value="ReadyForReview">ReadyForReview</option>
-                          <option value="PaperRecieved">PaperRecieved</option>
-                          <option value="FiledOn">FiledOn</option>
+                          {getAvailableStatuses(activeTaxTab).map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
@@ -863,9 +874,8 @@ export default function InsertBusinessResourceModal({
                       {form.status === "FiledOn" &&
                         activeTaxTab !== "ANNUAL_RENEWAL" && (
                           <div className={styles.formField}>
-                            <label>Confirmation Number *</label>
+                            <label>Confirmation Number</label>
                             <input
-                              required
                               value={form.confirmationNumber}
                               onChange={(e) =>
                                 setForm({
@@ -876,19 +886,19 @@ export default function InsertBusinessResourceModal({
                             />
                           </div>
                         )}
-
-                      <div className={styles.formField}>
-                        <label>Filing Date*</label>
-                        <input
-                          type="date"
-                          value={form.taxDate}
-                          required
-                          onChange={(e) =>
-                            setForm({ ...form, taxDate: e.target.value })
-                          }
-                        />
-                      </div>
-
+                      {form.status === "FiledOn" && (
+                        <div className={styles.formField}>
+                          <label>Filing Date*</label>
+                          <input
+                            type="date"
+                            value={form.taxDate}
+                            required
+                            onChange={(e) =>
+                              setForm({ ...form, taxDate: e.target.value })
+                            }
+                          />
+                        </div>
+                      )}
                       <div className={styles.formField}>
                         <label>Prepared By*</label>
                         <input
