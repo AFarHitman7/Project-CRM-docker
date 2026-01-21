@@ -90,6 +90,7 @@
   transition: all 0.2s;
   position: relative;
   bottom: -2px;
+  white-space: nowrap;
 }
 
 .tabs button:hover {

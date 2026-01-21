@@ -25,12 +25,13 @@ function formatDate(dateString?: string | null) {
   ).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-function formatMonthYear(dateStr?: string) {
+function formatDateMonth(dateStr?: string) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleString("en-US", {
+    day: "numeric",
     month: "long",
-    year: "numeric",
   });
 }
 
@@ -278,9 +279,10 @@ export default function BusinessDetails() {
 
   const TAX_ORDER = ["HST", "CORPORATION", "PAYROLL", "WSIB", "ANNUAL_RENEWAL"];
   const taxTypes = TAX_ORDER.filter((t) =>
-    taxProfiles.some((tp: any) => tp.tax_type === t)
+    taxProfiles.some(
+      (tp: any) => tp.tax_type === t && tp.registeredstatus === true
+    )
   );
-
   const toCapital = (s?: string) =>
     typeof s === "string" && s.trim() ? s.toUpperCase() : "";
 
@@ -336,7 +338,7 @@ export default function BusinessDetails() {
               />
               <Field
                 label="Fiscal Year End"
-                value={formatMonthYear(business.fiscal_year_end)}
+                value={formatDateMonth(business.fiscal_year_end)}
               />
               <Field
                 label="Ontario Corp #"

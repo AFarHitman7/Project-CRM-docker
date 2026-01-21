@@ -645,6 +645,11 @@ async function patchBusiness(req, res) {
       fax: "fax",
       loyaltySince: "loyalty_since",
       referredBy: "referred_by",
+      contactName: "contact_name",
+      incorporationDate: "incorporation_date",
+      incorporationJurisdiction: "incorporation_jurisdiction",
+      fiscalYearEnd: "fiscal_year_end",
+      ontarioCorpNumber: "ontario_corp_number",
     };
 
     const sets = [];
@@ -751,42 +756,54 @@ async function patchBusiness(req, res) {
 
     if (Array.isArray(payload.taxProfiles)) {
       for (const tp of payload.taxProfiles) {
-        if (tp.registeredstatus !== true && tp.registeredstatus !== false) {
-          continue; // ignore garbage
+        // Build the update dynamically based on what fields are present
+        const updateFields = [];
+        const values = [id, tp.tax_type];
+        let paramIndex = 3;
+
+        // Always update registeredstatus (ensure it's a boolean)
+        updateFields.push(`registeredstatus = $${paramIndex}`);
+        values.push(Boolean(tp.registeredstatus));
+        paramIndex++;
+
+        // frequency
+        if (tp.frequency !== undefined) {
+          updateFields.push(`frequency = $${paramIndex}`); // ✅ Added $
+          values.push(tp.frequency);
+          paramIndex++;
         }
+
+        // start_date
+        if (tp.start_date !== undefined) {
+          updateFields.push(`start_date = $${paramIndex}`); // ✅ Added $
+          values.push(tp.start_date);
+          paramIndex++;
+        }
+
+        // start_year
+        if (tp.start_year !== undefined) {
+          updateFields.push(`start_year = $${paramIndex}`); // ✅ Added $
+          values.push(tp.start_year);
+          paramIndex++;
+        }
+
+        // start_quarter
+        if (tp.start_quarter !== undefined) {
+          updateFields.push(`start_quarter = $${paramIndex}`); // ✅ Added $
+          values.push(tp.start_quarter);
+          paramIndex++;
+        }
+
+        // Always update updated_at
+        updateFields.push(`updated_at = now()`);
 
         await conn.query(
           `
-      INSERT INTO business_tax_profiles (
-        business_id,
-        tax_type,
-        frequency,
-        start_date,
-        start_year,
-        start_quarter,
-        registeredstatus,
-        created_at,
-        updated_at
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,now(),now())
-      ON CONFLICT (business_id, tax_type)
-      DO UPDATE SET
-        registeredstatus = EXCLUDED.registeredstatus,
-        frequency        = EXCLUDED.frequency,
-        start_date       = EXCLUDED.start_date,
-        start_year       = EXCLUDED.start_year,
-        start_quarter    = EXCLUDED.start_quarter,
-        updated_at       = now()
+      UPDATE business_tax_profiles
+      SET ${updateFields.join(", ")}
+      WHERE business_id = $1 AND tax_type = $2
       `,
-          [
-            id,
-            tp.tax_type,
-            tp.frequency ?? null,
-            tp.start_date ?? null,
-            tp.start_year ?? null,
-            tp.start_quarter ?? null,
-            tp.registeredstatus,
-          ]
+          values
         );
       }
     }

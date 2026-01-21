@@ -583,14 +583,18 @@ export default function InsertBusinessResourceModal({
                         "ANNUAL_RENEWAL",
                       ] as TaxType[]
                     )
-                      .filter((t) => taxProfiles.some((p) => p.tax_type === t))
+                      .filter((t) =>
+                        taxProfiles.some(
+                          (p) => p.tax_type === t && p.registeredstatus === true
+                        )
+                      )
                       .map((t) => (
                         <button
                           key={t}
                           className={activeTaxTab === t ? styles.activeTab : ""}
                           onClick={() => setActiveTaxTab(t)}
                         >
-                          {t}
+                          {t.replace(/_/g, " ")}
                         </button>
                       ))}
                   </div>
@@ -605,7 +609,7 @@ export default function InsertBusinessResourceModal({
                       className={styles.form}
                       onSubmit={handleSubmit}
                     >
-                      <h3>{activeTaxTab} Tax Record</h3>
+                      <h3>{activeTaxTab.replace(/_/g, " ")} Tax Record</h3>
 
                       {/* ================= HST ================= */}
                       {activeTaxTab === "HST" && (

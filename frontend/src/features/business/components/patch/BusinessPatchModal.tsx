@@ -18,6 +18,11 @@ interface PatchForm {
   fax: string;
   loyaltySince: string;
   referredBy: string;
+  contactName: string;
+  incorporationDate: string;
+  incorporationJurisdiction: string;
+  fiscalYearEnd: string;
+  ontarioCorpNumber: string;
 
   // primary address
   p_line1: string;
@@ -40,6 +45,7 @@ interface PatchForm {
   [key: `tax_${string}_start_date`]: string;
   [key: `tax_${string}_start_year`]: string;
   [key: `tax_${string}_start_quarter`]: string;
+  [key: `tax_${string}_registeredstatus`]: boolean;
 }
 
 function sanitizeDigits(v = "") {
@@ -65,6 +71,15 @@ function formatDateForInput(date?: string | null) {
     2,
     "0"
   )}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatMonthDayForInput(date?: string | null) {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export default function BusinessPatchModal({
@@ -105,6 +120,11 @@ export default function BusinessPatchModal({
       fax: business.fax ?? "",
       loyaltySince: formatDateForInput(business.loyalty_since),
       referredBy: business.referred_by ?? "",
+      contactName: business.contact_name ?? "",
+      incorporationDate: formatDateForInput(business.incorporation_date),
+      incorporationJurisdiction: business.incorporation_jurisdiction ?? "",
+      fiscalYearEnd: formatMonthDayForInput(business.fiscal_year_end),
+      ontarioCorpNumber: business.ontario_corp_number ?? "",
 
       p_line1: primary?.address_line1 ?? "",
       p_line2: primary?.address_line2 ?? "",
@@ -128,6 +148,7 @@ export default function BusinessPatchModal({
         tp.start_year !== null ? String(tp.start_year) : "";
       base[`tax_${tp.id}_start_quarter`] =
         tp.start_quarter !== null ? String(tp.start_quarter) : "";
+      base[`tax_${tp.id}_registeredstatus`] = tp.registeredstatus ?? false;
     });
 
     reset(base);
@@ -135,9 +156,38 @@ export default function BusinessPatchModal({
 
   if (!visible) return null;
 
+  /* ================= HELPER: NORMALIZE MM-DD TO DATE ================= */
+
+  const normalizeMonthDayToDate = (mmdd: string): string | null => {
+    if (!mmdd || mmdd.trim() === "") return null;
+
+    // Remove any extra spaces
+    const cleaned = mmdd.trim();
+
+    // Check if it matches MM-DD format
+    const match = cleaned.match(/^(\d{2})-(\d{2})$/);
+    if (!match) return null;
+
+    const [, month, day] = match;
+
+    // Use a non-leap year (2023) as default year for validation
+    const testDate = new Date(2023, parseInt(month) - 1, parseInt(day));
+
+    // Validate the date
+    if (
+      testDate.getMonth() !== parseInt(month) - 1 ||
+      testDate.getDate() !== parseInt(day)
+    ) {
+      return null; // Invalid date
+    }
+
+    // Return in YYYY-MM-DD format using year 2000 as placeholder
+    return `2000-${month}-${day}`;
+  };
+
   /* ================= BUILD PAYLOAD ================= */
 
-  function buildPayload(data: PatchForm) {
+  const buildPayload = (data: PatchForm) => {
     if (!business) return {};
 
     const payload: any = {};
@@ -154,11 +204,21 @@ export default function BusinessPatchModal({
       fax: "fax",
       loyaltySince: "loyalty_since",
       referredBy: "referred_by",
+      contactName: "contact_name",
+      incorporationDate: "incorporation_date",
+      incorporationJurisdiction: "incorporation_jurisdiction",
+      fiscalYearEnd: "fiscal_year_end",
+      ontarioCorpNumber: "ontario_corp_number",
     };
 
     for (const key of Object.keys(businessMap)) {
-      const newVal = (data as any)[key] || null;
+      let newVal = (data as any)[key] || null;
       const oldVal = business[businessMap[key]] ?? null;
+
+      // Special handling for fiscalYearEnd: convert MM-DD to full date
+      if (key === "fiscalYearEnd" && newVal) {
+        newVal = normalizeMonthDayToDate(newVal);
+      }
 
       if (String(newVal) !== String(oldVal)) {
         payload[key] = newVal;
@@ -203,25 +263,36 @@ export default function BusinessPatchModal({
     const taxUpdates: any[] = [];
 
     business.tax_profiles?.forEach((tp: any) => {
-      const diff: any = { id: tp.id };
+      const diff: any = {
+        id: tp.id,
+        tax_type: tp.tax_type,
+        registeredstatus: Boolean(data[`tax_${tp.id}_registeredstatus`]), // ✅ Always include, convert to boolean
+      };
 
       const freq = data[`tax_${tp.id}_frequency`] || null;
       const sd = data[`tax_${tp.id}_start_date`] || null;
       const sy = data[`tax_${tp.id}_start_year`] || null;
       const sq = data[`tax_${tp.id}_start_quarter`] || null;
 
-      if (String(freq) !== String(tp.frequency)) diff.frequency = freq;
-      if (String(sd) !== String(tp.start_date)) diff.start_date = sd;
-      if (String(sy) !== String(tp.start_year)) diff.start_year = sy;
-      if (String(sq) !== String(tp.start_quarter)) diff.start_quarter = sq;
+      if (String(freq) !== String(tp.frequency ?? null)) diff.frequency = freq;
+      if (String(sd) !== String(tp.start_date ?? null)) diff.start_date = sd;
+      if (String(sy) !== String(tp.start_year ?? null)) diff.start_year = sy;
+      if (String(sq) !== String(tp.start_quarter ?? null))
+        diff.start_quarter = sq;
 
-      if (Object.keys(diff).length > 1) taxUpdates.push(diff);
+      // Changed from > 2 to > 3 to account for registeredstatus being always present
+      // OR if registeredstatus itself changed
+      if (
+        Object.keys(diff).length > 3 ||
+        diff.registeredstatus !== tp.registeredstatus
+      ) {
+        taxUpdates.push(diff);
+      }
     });
-
     if (taxUpdates.length) payload.taxProfiles = taxUpdates;
 
     return payload;
-  }
+  };
 
   /* ================= SUBMIT ================= */
 
@@ -285,7 +356,7 @@ export default function BusinessPatchModal({
           <div className={styles.modalBody}>
             {/* ================= BUSINESS ================= */}
             <section className={styles.formSection}>
-              <h3>Business</h3>
+              <h3>Business Information</h3>
 
               <div className={styles.formRow}>
                 <div className={styles.formField}>
@@ -306,12 +377,17 @@ export default function BusinessPatchModal({
                 </div>
 
                 <div className={styles.formField}>
-                  <label>Email</label>
-                  <input type="email" {...register("email")} />
+                  <label>Contact Name</label>
+                  <input {...register("contactName")} />
                 </div>
               </div>
 
               <div className={styles.formRow}>
+                <div className={styles.formField}>
+                  <label>Email</label>
+                  <input type="email" {...register("email")} />
+                </div>
+
                 <div className={styles.formField}>
                   <label>Phone (Cell)</label>
                   <input
@@ -321,7 +397,9 @@ export default function BusinessPatchModal({
                     }
                   />
                 </div>
+              </div>
 
+              <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Phone (Home)</label>
                   <input
@@ -331,9 +409,7 @@ export default function BusinessPatchModal({
                     }
                   />
                 </div>
-              </div>
 
-              <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Phone (Work)</label>
                   <input
@@ -343,23 +419,58 @@ export default function BusinessPatchModal({
                     }
                   />
                 </div>
+              </div>
 
+              <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label>Fax</label>
                   <input {...register("fax")} />
+                </div>
+
+                <div className={styles.formField}>
+                  <label>Loyalty Since</label>
+                  <input type="date" {...register("loyaltySince")} />
                 </div>
               </div>
 
               <div className={styles.formRow}>
                 <div className={styles.formField}>
-                  <label>Loyalty Since</label>
-                  <input type="date" {...register("loyaltySince")} />
-                </div>
-
-                <div className={styles.formField}>
                   <label>Referred By</label>
                   <input {...register("referredBy")} />
                 </div>
+
+                <div className={styles.formField}>
+                  <label>Ontario Corp Number</label>
+                  <input {...register("ontarioCorpNumber")} />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formField}>
+                  <label>Incorporation Date</label>
+                  <input type="date" {...register("incorporationDate")} />
+                </div>
+
+                <div className={styles.formField}>
+                  <label>Incorporation Jurisdiction</label>
+                  <input
+                    {...register("incorporationJurisdiction")}
+                    placeholder="e.g., Ontario, Federal"
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formField}>
+                  <label>Fiscal Year End (MM-DD)</label>
+                  <input
+                    type="text"
+                    {...register("fiscalYearEnd")}
+                    placeholder="MM-DD (e.g., 12-31)"
+                    maxLength={5}
+                  />
+                </div>
+                <div className={styles.formField}></div>
               </div>
             </section>
 
@@ -452,14 +563,34 @@ export default function BusinessPatchModal({
               <h3>Tax Configuration</h3>
 
               {business.tax_profiles?.map((tp: any) => (
-                <div key={tp.id} className={styles.relationSection}>
-                  <strong>{tp.tax_type} Details</strong>
+                <div
+                  key={tp.id}
+                  style={{
+                    marginBottom: "1.5rem",
+                    padding: "1rem",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <h4 style={{ marginBottom: "1rem" }}>{tp.tax_type}</h4>
 
-                  {/* ================= HST ================= */}
+                  <div className={styles.formRow}>
+                    <div className={styles.formField}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          {...register(`tax_${tp.id}_registeredstatus`)}
+                          style={{ marginRight: "0.5rem" }}
+                        />
+                        Registered
+                      </label>
+                    </div>
+                  </div>
+
                   {tp.tax_type === "HST" && (
                     <div className={styles.formRow}>
                       <div className={styles.formField}>
-                        <label>Filing Frequency</label>
+                        <label>HST Filing Frequency</label>
                         <select {...register(`tax_${tp.id}_frequency`)}>
                           <option value="">Select frequency</option>
                           <option value="monthly">Monthly</option>
@@ -467,74 +598,13 @@ export default function BusinessPatchModal({
                           <option value="annually">Annually</option>
                         </select>
                       </div>
-
-                      <div className={styles.formField}>
-                        <label>Starting Date</label>
-                        <input
-                          type="date"
-                          {...register(`tax_${tp.id}_start_date`)}
-                        />
-                      </div>
                     </div>
                   )}
 
-                  {/* ================= CORPORATION ================= */}
-                  {tp.tax_type === "CORPORATION" && (
-                    <div className={styles.formRow}>
-                      <div className={styles.formField}>
-                        <label>Starting Year</label>
-                        <input
-                          type="number"
-                          {...register(`tax_${tp.id}_start_year`)}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ================= PAYROLL ================= */}
-                  {tp.tax_type === "PAYROLL" && (
-                    <div className={styles.formRow}>
-                      <div className={styles.formField}>
-                        <label>Starting Year</label>
-                        <input
-                          type="number"
-                          {...register(`tax_${tp.id}_start_year`)}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ================= WSIB ================= */}
-                  {tp.tax_type === "WSIB" && (
-                    <>
-                      <div className={styles.formRow}>
-                        <div className={styles.formField}>
-                          <label>Starting Quarter</label>
-                          <select {...register(`tax_${tp.id}_start_quarter`)}>
-                            <option value="">Select quarter</option>
-                            <option value="1">Q1</option>
-                            <option value="2">Q2</option>
-                            <option value="3">Q3</option>
-                            <option value="4">Q4</option>
-                          </select>
-                        </div>
-
-                        <div className={styles.formField}>
-                          <label>Starting Year</label>
-                          <input
-                            type="number"
-                            {...register(`tax_${tp.id}_start_year`)}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* ================= ANNUAL RENEWAL ================= */}
                   {tp.tax_type === "ANNUAL_RENEWAL" && (
                     <div className={styles.formRow}>
                       <div className={styles.formField}>
-                        <label>Starting Date</label>
+                        <label>Annual Renewal Starting Date</label>
                         <input
                           type="date"
                           {...register(`tax_${tp.id}_start_date`)}
