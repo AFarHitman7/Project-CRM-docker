@@ -69,9 +69,7 @@ const getData = async (): Promise<Row[]> => {
         client.tax_status || "N/A",
         client.phone || "N/A",
         client.email || "N/A",
-        client.latest_tax_date
-          ? new Date(client.latest_tax_date).toLocaleDateString()
-          : "N/A",
+        client.latest_tax_date ? formatDate(client.latest_tax_date) : "N/A",
         client.latest_tax_year?.toString() || "N/A",
         client.spouse_name || "N/A",
       ];
@@ -82,6 +80,18 @@ const getData = async (): Promise<Row[]> => {
     console.error("Error fetching data:", error);
     throw error;
   }
+};
+
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "N/A";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "N/A";
+
+  const MM = String(d.getMonth() + 1).padStart(2, "0");
+  const DD = String(d.getDate()).padStart(2, "0");
+  const YYYY = d.getFullYear();
+
+  return `${MM}/${DD}/${YYYY}`;
 };
 
 const PersonalTable: React.FC<PersonalTableProps> = ({

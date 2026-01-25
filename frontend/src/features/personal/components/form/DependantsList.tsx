@@ -98,7 +98,7 @@ export default function DependentsList({
           const base = `${name}.${idx}`;
           const same = !!watch(`dependents.${idx}.sameAddress` as const as any);
           const disability = !!watch(
-            `dependents.${idx}.disability` as const as any
+            `dependents.${idx}.disability` as const as any,
           );
 
           return (
@@ -153,8 +153,24 @@ export default function DependentsList({
                   <input
                     id={`${base}.dob`}
                     type="date"
-                    {...register(`${base}.dob` as const as any)}
+                    {...register(`${base}.dob` as const as any, {
+                      validate: (value) => {
+                        if (!value) return true; // Optional field
+                        const selected = new Date(value);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (selected > today) {
+                          return "Date cannot be in the future";
+                        }
+                        return true;
+                      },
+                    })}
                   />
+                  {(errors as any)?.dependents?.[idx]?.dob?.message && (
+                    <div role="alert" className={styles.errorText}>
+                      {(errors as any).dependents[idx].dob.message}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -200,38 +216,38 @@ export default function DependentsList({
                           {
                             shouldDirty: true,
                             shouldValidate: true,
-                          }
+                          },
                         );
                         if (checked) {
                           setValue(
                             `${base}.addressLine1` as const as any,
                             clientAddress.addressLine1 || "",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                           setValue(
                             `${base}.addressLine2` as const as any,
                             clientAddress.addressLine2 || "",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                           setValue(
                             `${base}.city` as const as any,
                             clientAddress.city || "",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                           setValue(
                             `${base}.province` as const as any,
                             clientAddress.province || "",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                           setValue(
                             `${base}.postalCode` as const as any,
                             clientAddress.postalCode || "",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                           setValue(
                             `${base}.country` as const as any,
                             clientAddress.country || "Canada",
-                            { shouldDirty: true }
+                            { shouldDirty: true },
                           );
                         }
                       }}

@@ -26,7 +26,7 @@ export default function PersonalDetails() {
   const [insertModalVisible, setInsertModalVisible] = useState(false);
   const [fileModalVisible, setFileModalVisible] = useState(false);
   const [activeTaxRecordId, setActiveTaxRecordId] = useState<string | null>(
-    null
+    null,
   );
   const [patchSaving, setPatchSaving] = useState(false);
 
@@ -141,7 +141,7 @@ export default function PersonalDetails() {
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -190,7 +190,7 @@ export default function PersonalDetails() {
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -247,36 +247,30 @@ export default function PersonalDetails() {
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  function formatDate(dateString: string | null | undefined) {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "N/A";
+  function formatDate(dateString?: string | null) {
+    if (!dateString) return "—";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "—";
 
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    const MM = String(d.getMonth() + 1).padStart(2, "0");
+    const DD = String(d.getDate()).padStart(2, "0");
+    const YYYY = d.getFullYear();
 
-    // Return in your preferred format
-    return `${day}/${month}/${year}`; // DD/MM/YYYY
-    // or return `${month}/${day}/${year}`; // MM/DD/YYYY
-    // or return `${year}-${month}-${day}`; // YYYY-MM-DD
+    return `${MM}/${DD}/${YYYY}`;
   }
   function formatDateTime(ts?: string) {
     if (!ts) return "—";
-
     const d = new Date(ts);
     if (isNaN(d.getTime())) return "—";
 
-    const pad = (n: number) => String(n).padStart(2, "0");
+    const MM = String(d.getMonth() + 1).padStart(2, "0");
+    const DD = String(d.getDate()).padStart(2, "0");
+    const YYYY = d.getFullYear();
+    const HH = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ss = String(d.getSeconds()).padStart(2, "0");
 
-    const MM = pad(d.getMonth() + 1);
-    const DD = pad(d.getDate());
-    const YY = String(d.getFullYear()).slice(-2);
-    const HH = pad(d.getHours());
-    const MMm = pad(d.getMinutes());
-    const SS = pad(d.getSeconds());
-
-    return `${MM}-${DD}-${YY} ${HH}:${MMm}:${SS}`;
+    return `${MM}/${DD}/${YYYY} ${HH}:${mm}:${ss}`;
   }
 
   async function refreshClient() {
@@ -291,7 +285,7 @@ export default function PersonalDetails() {
   const spouseTax = spouse?.tax_records?.[0];
 
   const activeTaxRecord = client.tax_records.find(
-    (tr: any) => tr.id === activeTaxRecordId
+    (tr: any) => tr.id === activeTaxRecordId,
   );
 
   return (
@@ -821,8 +815,8 @@ export default function PersonalDetails() {
                               {tax.hst_required === null
                                 ? "None"
                                 : tax.hst_required
-                                ? "Yes"
-                                : "No"}
+                                  ? "Yes"
+                                  : "No"}
                             </td>
                           </tr>
                         ))}

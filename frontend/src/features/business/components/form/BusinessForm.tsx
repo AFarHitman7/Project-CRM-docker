@@ -208,7 +208,7 @@ export default function BusinessForm() {
           ? new Date(
               2000,
               Number(data.fiscalYearEndMonth) - 1,
-              Number(data.fiscalYearEndDay)
+              Number(data.fiscalYearEndDay),
             )
               .toISOString()
               .slice(0, 10)
@@ -307,15 +307,18 @@ export default function BusinessForm() {
 
           <div className={styles.formRow}>
             <div className={styles.formField}>
-              <label htmlFor="businessType">Business Type *</label>
-              <input
+              <label htmlFor="businessType">CRA Access *</label>
+              <select
                 id="businessType"
                 {...register("businessType", {
                   required: "Business type is required",
                 })}
                 aria-invalid={!!errors.businessType}
-                placeholder="Enter Business Type"
-              />
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
               {errors.businessType && (
                 <div role="alert" className={styles.errorText}>
                   {errors.businessType.message}

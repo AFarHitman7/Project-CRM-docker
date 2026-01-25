@@ -20,9 +20,12 @@ function formatDate(dateString?: string | null) {
   if (!dateString) return "—";
   const d = new Date(dateString);
   if (isNaN(d.getTime())) return "—";
-  return `${String(d.getDate()).padStart(2, "0")}/${String(
-    d.getMonth() + 1
-  ).padStart(2, "0")}/${d.getFullYear()}`;
+
+  const MM = String(d.getMonth() + 1).padStart(2, "0");
+  const DD = String(d.getDate()).padStart(2, "0");
+  const YYYY = d.getFullYear();
+
+  return `${MM}/${DD}/${YYYY}`;
 }
 
 function formatDateMonth(dateStr?: string) {
@@ -37,20 +40,17 @@ function formatDateMonth(dateStr?: string) {
 
 function formatDateTime(ts?: string) {
   if (!ts) return "—";
-
   const d = new Date(ts);
   if (isNaN(d.getTime())) return "—";
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const MM = String(d.getMonth() + 1).padStart(2, "0");
+  const DD = String(d.getDate()).padStart(2, "0");
+  const YYYY = d.getFullYear();
+  const HH = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
 
-  const MM = pad(d.getMonth() + 1);
-  const DD = pad(d.getDate());
-  const YY = String(d.getFullYear()).slice(-2);
-  const HH = pad(d.getHours());
-  const MMm = pad(d.getMinutes());
-  const SS = pad(d.getSeconds());
-
-  return `${MM}-${DD}-${YY} ${HH}:${MMm}:${SS}`;
+  return `${MM}/${DD}/${YYYY} ${HH}:${mm}:${ss}`;
 }
 
 export default function BusinessDetails() {
@@ -81,7 +81,7 @@ export default function BusinessDetails() {
 
   const [selectedTaxRecord, setSelectedTaxRecord] = useState<any>(null);
   const [activeTaxRecordId, setActiveTaxRecordId] = useState<string | null>(
-    null
+    null,
   );
 
   const activeTaxRecord =
@@ -127,7 +127,7 @@ export default function BusinessDetails() {
           ...a,
           is_primary: truthy(a.is_primary),
           is_mailing: truthy(a.is_mailing),
-        }))
+        })),
       );
       setShareholders(data.shareholders || []);
       setTaxProfiles(data.tax_profiles || []);
@@ -186,7 +186,7 @@ export default function BusinessDetails() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Failed to delete tax record");
@@ -210,7 +210,7 @@ export default function BusinessDetails() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Delete failed");
@@ -257,7 +257,7 @@ export default function BusinessDetails() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ note: noteDraft }),
-        }
+        },
       );
 
       if (!res.ok) throw new Error("Update failed");
@@ -280,8 +280,8 @@ export default function BusinessDetails() {
   const TAX_ORDER = ["HST", "CORPORATION", "PAYROLL", "WSIB", "ANNUAL_RENEWAL"];
   const taxTypes = TAX_ORDER.filter((t) =>
     taxProfiles.some(
-      (tp: any) => tp.tax_type === t && tp.registeredstatus === true
-    )
+      (tp: any) => tp.tax_type === t && tp.registeredstatus === true,
+    ),
   );
   const toCapital = (s?: string) =>
     typeof s === "string" && s.trim() ? s.toUpperCase() : "";
@@ -327,7 +327,7 @@ export default function BusinessDetails() {
           <Section title="Business Details">
             <Grid>
               <Field label="Business Number" value={business.business_number} />
-              <Field label="Type" value={business.business_type} />
+              <Field label="CRA Access" value={business.business_type} />
               <Field
                 label="Incorporation Date"
                 value={formatDate(business.incorporation_date)}
@@ -412,11 +412,11 @@ export default function BusinessDetails() {
                 label="Annual Renewal Date"
                 value={(() => {
                   const ar = taxProfiles.find(
-                    (p: any) => p.tax_type === "ANNUAL_RENEWAL"
+                    (p: any) => p.tax_type === "ANNUAL_RENEWAL",
                   );
                   if (!ar || !ar.registeredstatus) return "Not Registered";
                   if (!ar.start_date) return "Registered";
-                  return new Date(ar.start_date).toLocaleDateString();
+                  return formatDate(ar.start_date);
                 })()}
               />
             </Grid>
@@ -523,7 +523,7 @@ export default function BusinessDetails() {
                   const showYearFilter = records.length > 5;
 
                   const years = Array.from(
-                    new Set(records.map((r: any) => r.tax_year))
+                    new Set(records.map((r: any) => r.tax_year)),
                   ).sort((a: any, b: any) => b - a);
 
                   const selectedYear = taxYearFilter[tp.tax_type] || "ALL";
@@ -532,7 +532,7 @@ export default function BusinessDetails() {
                     selectedYear === "ALL"
                       ? records
                       : records.filter(
-                          (r: any) => String(r.tax_year) === selectedYear
+                          (r: any) => String(r.tax_year) === selectedYear,
                         );
 
                   return (
@@ -962,7 +962,7 @@ export default function BusinessDetails() {
                             )}
                           </td>
                         </tr>
-                      )
+                      ),
                     )}
                   </tbody>
                 </table>

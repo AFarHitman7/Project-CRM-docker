@@ -29,7 +29,7 @@ interface BusinessTableProps {
 // 1. Updated Headers Order
 const headers: string[] = [
   "Name",
-  "Type", // Added Type here
+  "CRA Access",
   "Business Number", // Moved Business Number after Type
   "Phone Number",
   "Email",

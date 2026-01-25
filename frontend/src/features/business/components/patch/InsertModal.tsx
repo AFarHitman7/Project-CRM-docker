@@ -70,6 +70,14 @@ function isValidSIN(sin: string): boolean {
   return sum % 10 === 0;
 }
 
+function validateDateNotFuture(date: string): boolean {
+  if (!date) return true;
+  const selected = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return selected <= today;
+}
+
 export default function InsertBusinessResourceModal({
   visible,
   onClose,
@@ -79,7 +87,7 @@ export default function InsertBusinessResourceModal({
   user,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"tax" | "shareholders" | "notes">(
-    "tax"
+    "tax",
   );
 
   const [activeTaxTab, setActiveTaxTab] = useState<TaxType>("HST");
@@ -88,7 +96,7 @@ export default function InsertBusinessResourceModal({
 
   const [taxRecordCreated, setTaxRecordCreated] = useState(false);
   const [createdTaxRecordId, setCreatedTaxRecordId] = useState<string | null>(
-    null
+    null,
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -123,17 +131,76 @@ export default function InsertBusinessResourceModal({
     share_percentage: "",
   });
 
+  const [shareholderErrors, setShareholderErrors] = useState<any>({});
+
   const [noteForm, setNoteForm] = useState<Note>({
     note: "",
     createdBy: user?.id || "",
   });
 
+  const [error, setError] = useState<string>("");
+
   const handleCreateShareholder = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    const errors: any = {};
+
     if (!shareholderForm.share_percentage) {
-      alert("Share percentage required");
+      errors.share_percentage = "Share percentage is required";
+    } else if (
+      Number(shareholderForm.share_percentage) <= 0 ||
+      Number(shareholderForm.share_percentage) > 100
+    ) {
+      errors.share_percentage = "Share percentage must be between 0 and 100";
+    }
+
+    if (shareholderMode === "existing") {
+      if (!shareholderForm.client_id) {
+        errors.client_id = "Client ID is required";
+      }
+    }
+
+    if (shareholderMode === "new") {
+      if (!shareholderForm.first_name) {
+        errors.first_name = "First name is required";
+      }
+      if (!shareholderForm.last_name) {
+        errors.last_name = "Last name is required";
+      }
+      if (!shareholderForm.dob) {
+        errors.dob = "Date of birth is required";
+      } else if (!validateDateNotFuture(shareholderForm.dob)) {
+        errors.dob = "Date of birth cannot be in the future";
+      }
+      if (!shareholderForm.sin) {
+        errors.sin = "SIN is required";
+      } else if (!isValidSIN(shareholderForm.sin)) {
+        errors.sin = "Invalid SIN number";
+      }
+    }
+
+    if (shareholderMode === "basic") {
+      if (!shareholderForm.full_name) {
+        errors.full_name = "Full name is required";
+      }
+      if (!shareholderForm.dob) {
+        errors.dob = "Date of birth is required";
+      } else if (!validateDateNotFuture(shareholderForm.dob)) {
+        errors.dob = "Date of birth cannot be in the future";
+      }
+      if (!shareholderForm.sin) {
+        errors.sin = "SIN is required";
+      } else if (!isValidSIN(shareholderForm.sin)) {
+        errors.sin = "Invalid SIN number";
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setShareholderErrors(errors);
       return;
     }
+
+    setShareholderErrors({});
 
     const token = localStorage.getItem("token");
 
@@ -142,27 +209,10 @@ export default function InsertBusinessResourceModal({
     };
 
     if (shareholderMode === "existing") {
-      if (!shareholderForm.client_id) {
-        alert("Select a client");
-        return;
-      }
       payload.client_id = shareholderForm.client_id;
     }
 
     if (shareholderMode === "new") {
-      if (!shareholderForm.first_name || !shareholderForm.last_name) {
-        alert("First and last name required");
-        return;
-      }
-      if (!shareholderForm.dob) {
-        alert("Date of birth is required");
-        return;
-      }
-      if (!isValidSIN(shareholderForm.sin)) {
-        alert("Invalid SIN");
-        return;
-      }
-
       payload.personal_client = {
         first_name: shareholderForm.first_name,
         last_name: shareholderForm.last_name,
@@ -173,24 +223,13 @@ export default function InsertBusinessResourceModal({
     }
 
     if (shareholderMode === "basic") {
-      if (!shareholderForm.full_name) {
-        alert("Full name is required");
-        return;
-      }
-      if (!shareholderForm.dob) {
-        alert("Date of birth is required");
-        return;
-      }
-      if (!isValidSIN(shareholderForm.sin)) {
-        alert("Invalid SIN");
-        return;
-      }
       payload.full_name = shareholderForm.full_name;
       payload.dob = shareholderForm.dob;
       payload.sin = shareholderForm.sin;
     }
 
     setLoading(true);
+    setError("");
     try {
       const res = await fetch(
         `${API_URL}/api/bClient/${businessId}/shareholders`,
@@ -201,16 +240,18 @@ export default function InsertBusinessResourceModal({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
-      if (!res.ok) throw new Error("Create shareholder failed");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to create shareholder");
+      }
 
-      alert("Shareholder added");
       onSuccess();
       handleClose();
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -219,11 +260,11 @@ export default function InsertBusinessResourceModal({
   const handleAddNote = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!noteForm.note) {
-      alert("A note is required");
-      return;
+      return; // HTML5 validation will handle this
     }
 
     setLoading(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
 
@@ -237,16 +278,15 @@ export default function InsertBusinessResourceModal({
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to add note");
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to add note");
       }
 
-      alert("Note added successfully");
       setNoteForm({ note: "", createdBy: user?.id || "" });
       onSuccess();
       handleClose();
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -281,8 +321,6 @@ export default function InsertBusinessResourceModal({
     }
   }
 
-  /* ================= TAX PROFILE RESOLUTION ================= */
-
   useEffect(() => {
     if (!visible) return;
 
@@ -309,8 +347,8 @@ export default function InsertBusinessResourceModal({
         effectiveProfile.frequency === "quarterly"
           ? `Q${profile.start_quarter ?? 1}`
           : effectiveProfile.frequency === "monthly"
-          ? ""
-          : "",
+            ? ""
+            : "",
       amount: "",
       confirmationNumber: "",
       status: "InProgress",
@@ -324,7 +362,6 @@ export default function InsertBusinessResourceModal({
     });
   }, [activeTaxTab, taxProfiles, visible]);
 
-  /* ================= AUTO-DERIVE TAX YEAR FOR RENEWAL ================= */
   useEffect(() => {
     if (activeTaxTab === "ANNUAL_RENEWAL" && form.updateRenewal) {
       const year = new Date(form.updateRenewal).getFullYear();
@@ -333,8 +370,6 @@ export default function InsertBusinessResourceModal({
       }
     }
   }, [activeTaxTab, form.updateRenewal, form.taxYear]);
-
-  /* ================= ACTIONS ================= */
 
   const resetForm = () => {
     setForm({
@@ -354,6 +389,8 @@ export default function InsertBusinessResourceModal({
     setTaxRecordCreated(false);
     setCreatedTaxRecordId(null);
     setSelectedFile(null);
+    setError("");
+    setShareholderErrors({});
   };
 
   const handleClose = () => {
@@ -365,23 +402,24 @@ export default function InsertBusinessResourceModal({
     if (e) e.preventDefault();
 
     if (!activeProfile) {
-      alert("No tax profile exists for this tax type");
+      setError("No tax profile exists for this tax type");
       return;
     }
 
     if (activeTaxTab !== "ANNUAL_RENEWAL" && !form.taxYear) {
-      alert("Tax year is required");
+      setError("Tax year is required");
       return;
     }
 
     if (form.status === "FiledOn" || form.status === "ReadyForReview") {
       if (!form.amount) {
-        alert("Amount is required");
+        setError("Amount is required for this status");
         return;
       }
     }
 
     setLoading(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
 
@@ -412,20 +450,29 @@ export default function InsertBusinessResourceModal({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
-        }
+        },
       );
 
-      if (!res.ok) throw new Error("Create failed");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to create tax record");
+      }
 
       const data = await res.json();
 
-      alert("Tax record created successfully");
-
       console.log("Created tax record:", data.id);
-      setCreatedTaxRecordId(data.id);
-      setTaxRecordCreated(true);
+
+      // If status is FiledOn, show upload page
+      if (form.status === "FiledOn") {
+        setCreatedTaxRecordId(data.id);
+        setTaxRecordCreated(true);
+      } else {
+        // Otherwise, close modal and refresh
+        onSuccess();
+        handleClose();
+      }
     } catch (e: any) {
-      alert(e.message || "Something broke");
+      setError(e.message || "Failed to create tax record");
     } finally {
       setLoading(false);
     }
@@ -439,11 +486,12 @@ export default function InsertBusinessResourceModal({
   const handleUploadDocument = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedFile || !createdTaxRecordId) {
-      alert("Select a file");
+      setError("Please select a file to upload");
       return;
     }
 
     setLoading(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
       const formData = new FormData();
@@ -461,20 +509,20 @@ export default function InsertBusinessResourceModal({
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
-      alert("Document uploaded successfully");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Failed to upload document");
+      }
 
       onSuccess();
       handleClose();
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Determine button properties based on active tab and state
   function getButtonProps() {
     if (activeTab === "notes") {
       return {
@@ -494,7 +542,6 @@ export default function InsertBusinessResourceModal({
       };
     }
 
-    // TAX TAB LOGIC
     if (taxRecordCreated) {
       if (form.status === "FiledOn") {
         return {
@@ -527,8 +574,6 @@ export default function InsertBusinessResourceModal({
 
   if (!visible) return null;
 
-  /* ================= RENDER ================= */
-
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true">
       <div className={styles.modal}>
@@ -544,25 +589,40 @@ export default function InsertBusinessResourceModal({
           </button>
         </div>
 
-        {/* MAIN TABS */}
+        {error && (
+          <div className={styles.errorMessage} role="alert">
+            {error}
+          </div>
+        )}
+
         <div className={styles.tabs}>
           <button
             className={activeTab === "tax" ? styles.activeTab : ""}
-            onClick={() => setActiveTab("tax")}
+            onClick={() => {
+              setActiveTab("tax");
+              setError("");
+            }}
           >
             Tax Record
           </button>
 
           <button
             className={activeTab === "shareholders" ? styles.activeTab : ""}
-            onClick={() => setActiveTab("shareholders")}
+            onClick={() => {
+              setActiveTab("shareholders");
+              setError("");
+              setShareholderErrors({});
+            }}
           >
             Shareholders
           </button>
 
           <button
             className={activeTab === "notes" ? styles.activeTab : ""}
-            onClick={() => setActiveTab("notes")}
+            onClick={() => {
+              setActiveTab("notes");
+              setError("");
+            }}
           >
             Notes
           </button>
@@ -585,14 +645,18 @@ export default function InsertBusinessResourceModal({
                     )
                       .filter((t) =>
                         taxProfiles.some(
-                          (p) => p.tax_type === t && p.registeredstatus === true
-                        )
+                          (p) =>
+                            p.tax_type === t && p.registeredstatus === true,
+                        ),
                       )
                       .map((t) => (
                         <button
                           key={t}
                           className={activeTaxTab === t ? styles.activeTab : ""}
-                          onClick={() => setActiveTaxTab(t)}
+                          onClick={() => {
+                            setActiveTaxTab(t);
+                            setError("");
+                          }}
                         >
                           {t.replace(/_/g, " ")}
                         </button>
@@ -603,7 +667,6 @@ export default function InsertBusinessResourceModal({
                       No tax profile exists for {activeTaxTab}.
                     </div>
                   ) : (
-                    /* ====== WRAP TAX INPUTS IN FORM ====== */
                     <form
                       id="tax-form"
                       className={styles.form}
@@ -611,7 +674,6 @@ export default function InsertBusinessResourceModal({
                     >
                       <h3>{activeTaxTab.replace(/_/g, " ")} Tax Record</h3>
 
-                      {/* ================= HST ================= */}
                       {activeTaxTab === "HST" && (
                         <>
                           <div className={styles.formField}>
@@ -676,7 +738,7 @@ export default function InsertBusinessResourceModal({
                           )}
 
                           <div className={styles.formField}>
-                            <label>From Date*</label>
+                            <label>From Date *</label>
                             <input
                               type="date"
                               value={form.fromDate}
@@ -688,7 +750,7 @@ export default function InsertBusinessResourceModal({
                           </div>
 
                           <div className={styles.formField}>
-                            <label>To Date*</label>
+                            <label>To Date *</label>
                             <input
                               type="date"
                               value={form.toDate}
@@ -701,7 +763,6 @@ export default function InsertBusinessResourceModal({
                         </>
                       )}
 
-                      {/* ================= CORPORATION ================= */}
                       {activeTaxTab === "CORPORATION" && (
                         <>
                           <div className={styles.formField}>
@@ -722,7 +783,6 @@ export default function InsertBusinessResourceModal({
                         </>
                       )}
 
-                      {/* ================= PAYROLL ================= */}
                       {activeTaxTab === "PAYROLL" && (
                         <>
                           <div className={styles.formField}>
@@ -768,7 +828,6 @@ export default function InsertBusinessResourceModal({
                         </>
                       )}
 
-                      {/* ================= WSIB ================= */}
                       {activeTaxTab === "WSIB" && (
                         <>
                           <div className={styles.formField}>
@@ -804,7 +863,6 @@ export default function InsertBusinessResourceModal({
                         </>
                       )}
 
-                      {/* ================= ANNUAL RENEWAL ================= */}
                       {activeTaxTab === "ANNUAL_RENEWAL" && (
                         <>
                           <div className={styles.formField}>
@@ -813,7 +871,7 @@ export default function InsertBusinessResourceModal({
                               value={
                                 activeProfile.start_date
                                   ? new Date(
-                                      activeProfile.start_date
+                                      activeProfile.start_date,
                                     ).toLocaleDateString("en-CA")
                                   : ""
                               }
@@ -837,7 +895,6 @@ export default function InsertBusinessResourceModal({
                         </>
                       )}
 
-                      {/* ================= COMMON (ALL TAX TYPES) ================= */}
                       <div className={styles.formField}>
                         <label>Status</label>
                         <select
@@ -858,7 +915,6 @@ export default function InsertBusinessResourceModal({
                         </select>
                       </div>
 
-                      {/* Show Amount and Confirmation Number only when FiledOn (except for Annual Renewal) */}
                       {(form.status === "FiledOn" ||
                         form.status === "ReadyForReview") &&
                         activeTaxTab !== "ANNUAL_RENEWAL" && (
@@ -875,6 +931,7 @@ export default function InsertBusinessResourceModal({
                             />
                           </div>
                         )}
+
                       {form.status === "FiledOn" &&
                         activeTaxTab !== "ANNUAL_RENEWAL" && (
                           <div className={styles.formField}>
@@ -890,21 +947,24 @@ export default function InsertBusinessResourceModal({
                             />
                           </div>
                         )}
+
                       {form.status === "FiledOn" && (
                         <div className={styles.formField}>
-                          <label>Filing Date*</label>
+                          <label>Filing Date *</label>
                           <input
                             type="date"
                             value={form.taxDate}
                             required
+                            max={new Date().toISOString().split("T")[0]}
                             onChange={(e) =>
                               setForm({ ...form, taxDate: e.target.value })
                             }
                           />
                         </div>
                       )}
+
                       <div className={styles.formField}>
-                        <label>Prepared By*</label>
+                        <label>Prepared By *</label>
                         <input
                           value={form.preparedBy}
                           required
@@ -929,7 +989,6 @@ export default function InsertBusinessResourceModal({
               ) : (
                 <div className={styles.form}>
                   {form.status === "FiledOn" ? (
-                    /* ====== WRAP UPLOAD INPUT IN FORM ====== */
                     <form id="upload-form" onSubmit={handleUploadDocument}>
                       <h3>Upload Filing Document</h3>
                       <div className={styles.formField}>
@@ -960,7 +1019,6 @@ export default function InsertBusinessResourceModal({
 
           {activeTab === "shareholders" && (
             <div className={styles.tabContent}>
-              {/* ====== WRAP SHAREHOLDER INPUTS IN FORM ====== */}
               <form
                 id="shareholder-form"
                 className={styles.form}
@@ -968,7 +1026,6 @@ export default function InsertBusinessResourceModal({
               >
                 <h3>Add Shareholder</h3>
 
-                {/* MODE SELECT */}
                 <div className={styles.formField}>
                   <label>Type</label>
                   <select
@@ -983,7 +1040,6 @@ export default function InsertBusinessResourceModal({
                   </select>
                 </div>
 
-                {/* EXISTING CLIENT */}
                 {shareholderMode === "existing" && (
                   <div className={styles.formField}>
                     <label>Client ID *</label>
@@ -998,10 +1054,14 @@ export default function InsertBusinessResourceModal({
                         })
                       }
                     />
+                    {shareholderErrors.client_id && (
+                      <div className={styles.errorText} role="alert">
+                        {shareholderErrors.client_id}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* NEW CLIENT */}
                 {shareholderMode === "new" && (
                   <>
                     <div className={styles.formField}>
@@ -1016,6 +1076,11 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.first_name && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.first_name}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
@@ -1030,6 +1095,11 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.last_name && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.last_name}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
@@ -1038,6 +1108,7 @@ export default function InsertBusinessResourceModal({
                         type="date"
                         value={shareholderForm.dob}
                         required
+                        max={new Date().toISOString().split("T")[0]}
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1045,6 +1116,11 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.dob && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.dob}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
@@ -1061,11 +1137,17 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.sin && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.sin}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
                       <label>Email</label>
                       <input
+                        type="email"
                         value={shareholderForm.email}
                         onChange={(e) =>
                           setShareholderForm({
@@ -1078,7 +1160,6 @@ export default function InsertBusinessResourceModal({
                   </>
                 )}
 
-                {/* BASIC ONLY */}
                 {shareholderMode === "basic" && (
                   <>
                     <div className={styles.formField}>
@@ -1093,6 +1174,11 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.full_name && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.full_name}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
@@ -1101,6 +1187,7 @@ export default function InsertBusinessResourceModal({
                         type="date"
                         value={shareholderForm.dob}
                         required
+                        max={new Date().toISOString().split("T")[0]}
                         onChange={(e) =>
                           setShareholderForm({
                             ...shareholderForm,
@@ -1108,6 +1195,11 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.dob && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.dob}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.formField}>
@@ -1124,11 +1216,15 @@ export default function InsertBusinessResourceModal({
                           })
                         }
                       />
+                      {shareholderErrors.sin && (
+                        <div className={styles.errorText} role="alert">
+                          {shareholderErrors.sin}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
 
-                {/* COMMON */}
                 <div className={styles.formField}>
                   <label>Share Percentage *</label>
                   <input
@@ -1146,13 +1242,18 @@ export default function InsertBusinessResourceModal({
                       });
                     }}
                   />
+                  {shareholderErrors.share_percentage && (
+                    <div className={styles.errorText} role="alert">
+                      {shareholderErrors.share_percentage}
+                    </div>
+                  )}
                 </div>
               </form>
             </div>
           )}
+
           {activeTab === "notes" && (
             <div className={styles.tabContent}>
-              {/* ====== WRAP NOTES INPUT IN FORM ====== */}
               <form
                 id="note-form"
                 className={styles.form}

@@ -69,7 +69,7 @@ function formatDateForInput(date?: string | null) {
   if (isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
     2,
-    "0"
+    "0",
   )}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
@@ -78,7 +78,7 @@ function formatMonthDayForInput(date?: string | null) {
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
+    d.getDate(),
   ).padStart(2, "0")}`;
 }
 
@@ -327,7 +327,7 @@ export default function BusinessPatchModal({
   };
 
   const hasMailingAddress = !!business?.addresses?.some(
-    (a: any) => a.is_mailing
+    (a: any) => a.is_mailing,
   );
 
   /* ================= UI ================= */
@@ -372,8 +372,12 @@ export default function BusinessPatchModal({
 
               <div className={styles.formRow}>
                 <div className={styles.formField}>
-                  <label>Business Type</label>
-                  <input {...register("businessType")} />
+                  <label>CRA Access</label>
+                  <select {...register("businessType")}>
+                    <option value="">Select</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
                 </div>
 
                 <div className={styles.formField}>

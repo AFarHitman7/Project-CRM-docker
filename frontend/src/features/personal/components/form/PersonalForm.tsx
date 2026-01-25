@@ -73,6 +73,18 @@ function validateCanadianSIN(sin = "") {
   return true;
 }
 
+function validateDateNotFuture(date: string) {
+  if (!date) return "Date is required";
+  const selected = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to compare dates only
+
+  if (selected > today) {
+    return "Date cannot be in the future";
+  }
+  return true;
+}
+
 export default function PersonalForm() {
   const {
     control,
@@ -350,7 +362,7 @@ export default function PersonalForm() {
                   type="date"
                   {...register("dob", {
                     required: "Date of birth is required",
-                    validate: (v) => (v ? true : "Invalid date"),
+                    validate: validateDateNotFuture,
                   })}
                   aria-invalid={!!errors.dob}
                 />
@@ -690,8 +702,11 @@ export default function PersonalForm() {
                   id="spouseDob"
                   type="date"
                   {...register("spouseDob", {
-                    validate: (v) =>
-                      !isMarried ? true : v ? true : "DOB is required",
+                    validate: (v) => {
+                      if (!isMarried) return true;
+                      if (!v) return "DOB is required";
+                      return validateDateNotFuture(v);
+                    },
                   })}
                   aria-invalid={!!errors.spouseDob}
                 />
