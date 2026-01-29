@@ -385,6 +385,7 @@ export default function PersonalDetails() {
                 label="Referred By"
                 value={toTitleCase(client.referred_by)}
               />
+              <Field label="Loyalty" value={client.loyalty} />
             </div>
           </div>
 
@@ -478,6 +479,7 @@ export default function PersonalDetails() {
                               "None"
                             ) : tax.hst_docs ? (
                               <button
+                                className={styles.button}
                                 onClick={() => {
                                   setActiveTaxRecordId(tax.id);
                                   setFileModalVisible(true);
@@ -727,6 +729,7 @@ export default function PersonalDetails() {
                   label="Created at"
                   value={formatDate(spouse.created_at)}
                 />
+                <Field label="Loyalty" value={spouse.loyalty} />
               </div>
             </div>
             {/* ADDRESS */}

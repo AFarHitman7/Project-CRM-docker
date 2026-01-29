@@ -295,6 +295,13 @@ td .buttonContainer {
   color: #1f2937;
 }
 
+.table td .button {
+  background-color: #1792e7;
+}
+.table td .button:hover {
+  background-color: #1274b9;
+}
+
 .taxYear {
   font-weight: 500;
 }

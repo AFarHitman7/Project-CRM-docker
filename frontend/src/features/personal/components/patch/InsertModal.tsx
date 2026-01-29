@@ -145,7 +145,7 @@ export default function InsertModal({
 
   const [taxRecordCreated, setTaxRecordCreated] = useState(false);
   const [createdTaxRecordId, setCreatedTaxRecordId] = useState<string | null>(
-    null
+    null,
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -210,7 +210,7 @@ export default function InsertModal({
     setSelectedFile(null);
 
     const fileInput = document.getElementById(
-      "taxAttachment"
+      "taxAttachment",
     ) as HTMLInputElement;
     if (fileInput) {
       fileInput.value = "";
@@ -263,7 +263,6 @@ export default function InsertModal({
         throw new Error(error.message || "Failed to add note");
       }
 
-      alert("note added successfully!");
       resetForms();
       onSuccess();
       handleClose();
@@ -298,7 +297,6 @@ export default function InsertModal({
         throw new Error(error.message || "Failed to add address");
       }
 
-      alert("Address added successfully!");
       resetForms();
       onSuccess();
       handleClose();
@@ -360,7 +358,6 @@ export default function InsertModal({
         throw new Error(error.message || "Failed to add dependent");
       }
 
-      alert("Dependent added successfully!");
       resetForms();
       onSuccess();
       handleClose();
@@ -421,7 +418,7 @@ export default function InsertModal({
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(payload),
-          }
+          },
         );
 
         if (!res.ok) {
@@ -440,7 +437,6 @@ export default function InsertModal({
           alert("Tax record created! Please upload the filing attachment.");
         } else {
           // For other statuses, we're done
-          alert("Tax record added successfully!");
           resetForms();
           onSuccess();
           handleClose();
@@ -471,7 +467,7 @@ export default function InsertModal({
 
         console.log(
           "Uploading attachment for tax record ID:",
-          createdTaxRecordId
+          createdTaxRecordId,
         );
 
         // Upload attachment to the created tax record
@@ -483,7 +479,7 @@ export default function InsertModal({
               Authorization: `Bearer ${token}`,
             },
             body: formData,
-          }
+          },
         );
 
         if (!res.ok) {
@@ -491,7 +487,6 @@ export default function InsertModal({
           throw new Error(error.message || "Failed to upload attachment");
         }
 
-        alert("Attachment uploaded successfully!");
         resetForms();
         setTaxRecordCreated(false);
         setCreatedTaxRecordId(null);
@@ -508,7 +503,6 @@ export default function InsertModal({
 
   // Handler to skip attachment upload
   const handleSkipAttachment = () => {
-    alert("Tax record created without attachment. You can add it later.");
     resetForms();
     setTaxRecordCreated(false);
     setCreatedTaxRecordId(null);
@@ -617,7 +611,6 @@ export default function InsertModal({
         throw new Error(error.message || "Failed to add spouse");
       }
 
-      alert("Spouse added successfully!");
       resetForms();
       onSuccess();
       handleClose();
@@ -1492,12 +1485,12 @@ export default function InsertModal({
               activeTab === "notes"
                 ? handleAddNote
                 : activeTab === "address"
-                ? handleAddAddress
-                : activeTab === "dependent"
-                ? handleAddDependent
-                : activeTab === "spouse"
-                ? handleAddSpouse
-                : handleAddTaxRecord
+                  ? handleAddAddress
+                  : activeTab === "dependent"
+                    ? handleAddDependent
+                    : activeTab === "spouse"
+                      ? handleAddSpouse
+                      : handleAddTaxRecord
             }
             disabled={loading}
             className={styles.submitButton}
@@ -1505,20 +1498,20 @@ export default function InsertModal({
             {loading
               ? "Processing..."
               : activeTab === "tax" && taxRecordCreated
-              ? "Upload Attachment"
-              : activeTab === "tax"
-              ? "Create Tax Record"
-              : `Add ${
-                  activeTab === "notes"
-                    ? "Note"
-                    : activeTab === "address"
-                    ? "Address"
-                    : activeTab === "dependent"
-                    ? "Dependent"
-                    : activeTab === "spouse"
-                    ? "Spouse"
-                    : ""
-                }`}
+                ? "Upload Attachment"
+                : activeTab === "tax"
+                  ? "Create Tax Record"
+                  : `Add ${
+                      activeTab === "notes"
+                        ? "Note"
+                        : activeTab === "address"
+                          ? "Address"
+                          : activeTab === "dependent"
+                            ? "Dependent"
+                            : activeTab === "spouse"
+                              ? "Spouse"
+                              : ""
+                    }`}
           </button>
         </div>
       </div>

@@ -16,6 +16,7 @@ interface PatchForm {
   phoneHome: string;
   phoneWork: string;
   fax: string;
+  loyalty: string;
   loyaltySince: string;
   referredBy: string;
   contactName: string;
@@ -98,7 +99,7 @@ export default function BusinessPatchModal({
     handleSubmit,
     reset,
     setValue,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<PatchForm>({ mode: "onTouched" });
 
   /* ================= PREFILL ================= */
@@ -118,6 +119,7 @@ export default function BusinessPatchModal({
       phoneHome: business.phone_home ?? "",
       phoneWork: business.phone_work ?? "",
       fax: business.fax ?? "",
+      loyalty: business.loyalty ?? "",
       loyaltySince: formatDateForInput(business.loyalty_since),
       referredBy: business.referred_by ?? "",
       contactName: business.contact_name ?? "",
@@ -202,6 +204,7 @@ export default function BusinessPatchModal({
       phoneHome: "phone_home",
       phoneWork: "phone_work",
       fax: "fax",
+      loyalty: "loyalty",
       loyaltySince: "loyalty_since",
       referredBy: "referred_by",
       contactName: "contact_name",
@@ -474,7 +477,42 @@ export default function BusinessPatchModal({
                     maxLength={5}
                   />
                 </div>
-                <div className={styles.formField}></div>
+                <div className={styles.formField}>
+                  <label htmlFor="loyalty">Loyalty (0-10)</label>
+                  <input
+                    id="loyalty"
+                    type="number"
+                    {...register("loyalty", {
+                      min: {
+                        value: 0,
+                        message: "Loyalty must be at least 0",
+                      },
+                      max: {
+                        value: 10,
+                        message: "Loyalty must be at most 10",
+                      },
+                      validate: {
+                        isInteger: (value) => {
+                          if (!value || value === "") return true; // Allow empty
+                          const num = Number(value);
+                          return (
+                            Number.isInteger(num) ||
+                            "Loyalty must be a whole number"
+                          );
+                        },
+                      },
+                    })}
+                    placeholder="0-10"
+                    min="0"
+                    max="10"
+                    step="1"
+                  />
+                  {errors.loyalty && (
+                    <span className={styles.errorText}>
+                      {errors.loyalty.message}
+                    </span>
+                  )}
+                </div>
               </div>
             </section>
 

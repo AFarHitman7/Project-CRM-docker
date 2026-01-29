@@ -350,12 +350,13 @@ export default function BusinessDetails() {
               <Field label="Fax" value={business.fax} />
               <Field label="Email" value={business.email} />
               <Field
-                label="Loyalty Since"
-                value={formatDate(business.loyalty_since)}
-              />
-              <Field
                 label="Referred By"
                 value={toTitleCase(business.referred_by)}
+              />
+              <Field label="Loyalty" value={business.loyalty} />
+              <Field
+                label="Loyalty Since"
+                value={formatDate(business.loyalty_since)}
               />
             </Grid>
           </Section>
@@ -704,6 +705,7 @@ export default function BusinessDetails() {
                                   </td>
                                   <td>
                                     <button
+                                      className={styles.button}
                                       onClick={() => {
                                         setActiveTaxRecordId(r.id);
                                         setTaxNoteModalVisible(true);
@@ -715,6 +717,7 @@ export default function BusinessDetails() {
 
                                   <td>
                                     <button
+                                      className={styles.button}
                                       onClick={() => {
                                         setActiveTaxRecordId(r.id);
                                         setFileModalVisible(true);

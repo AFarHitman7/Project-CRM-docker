@@ -62,6 +62,7 @@ async function listClients(req, res) {
         bc.contact_name,
         bc.fiscal_year_end,
         bc.phone_cell,
+        bc.loyalty,
         bc.created_at
       FROM business_clients bc
       ${whereSql}
@@ -74,7 +75,7 @@ async function listClients(req, res) {
 
     const countRes = await pool.query(
       `SELECT COUNT(*) FROM business_clients bc ${whereSql}`,
-      params
+      params,
     );
 
     res.json({
@@ -105,6 +106,15 @@ async function createBusiness(req, res) {
     await conn.query("BEGIN");
     const now = new Date();
 
+    // Validate and clamp loyalty value
+    let loyalty = null;
+    if (payload.loyalty !== undefined && payload.loyalty !== null) {
+      const loyaltyNum = Number(payload.loyalty);
+      if (!isNaN(loyaltyNum)) {
+        loyalty = Math.max(0, Math.min(10, Math.round(loyaltyNum)));
+      }
+    }
+
     /* ============================================================
        1. business_clients
     ============================================================ */
@@ -126,6 +136,7 @@ async function createBusiness(req, res) {
         email,
         loyalty_since,
         referred_by,
+        loyalty,
         created_by,
         updated_by,
         created_at,
@@ -134,7 +145,7 @@ async function createBusiness(req, res) {
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,
         $8,$9,$10,$11,$12,
-        $13,$14,$15,$16,$17,$18,$19
+        $13,$14,$15,$16,$17,$18,$19,$20
       )
       RETURNING id
       `,
@@ -154,11 +165,12 @@ async function createBusiness(req, res) {
         payload.email,
         nullify(payload.loyaltySince),
         nullify(payload.referredBy),
+        loyalty,
         createdBy,
         createdBy,
         now,
         now,
-      ]
+      ],
     );
 
     const businessId = bcRes.rows[0].id;
@@ -196,7 +208,7 @@ async function createBusiness(req, res) {
           a.is_primary === true,
           a.is_mailing === true,
           now,
-        ]
+        ],
       );
     }
 
@@ -225,7 +237,7 @@ async function createBusiness(req, res) {
           sh.sin ? encrypt(sh.sin) : null,
           sh.sin ? sha256(sh.sin) : null,
           sh.clientId || null,
-        ]
+        ],
       );
     }
 
@@ -339,7 +351,7 @@ async function createBusiness(req, res) {
           true,
           now,
           now,
-        ]
+        ],
       );
     }
 
@@ -369,7 +381,7 @@ async function getBusiness(req, res) {
       WHERE id = $1
       LIMIT 1
       `,
-      [businessId]
+      [businessId],
     );
 
     if (!businessRes.rows.length) {
@@ -399,7 +411,7 @@ async function getBusiness(req, res) {
         is_mailing DESC,
         created_at ASC
       `,
-      [businessId]
+      [businessId],
     );
 
     /* ================= SHAREHOLDERS (FIXED) ================= */
@@ -427,7 +439,7 @@ async function getBusiness(req, res) {
       ORDER BY
         COALESCE(bs.full_name, c.first_name || ' ' || c.last_name) ASC
       `,
-      [businessId]
+      [businessId],
     );
 
     const shareholders = shareholdersRes.rows.map((sh) => {
@@ -482,7 +494,7 @@ async function getBusiness(req, res) {
           AND bc.id != $2
         ORDER BY bc.business_name ASC
         `,
-        [clientIds, businessId]
+        [clientIds, businessId],
       );
       relatedBusinesses = relatedRes.rows;
     }
@@ -503,7 +515,7 @@ async function getBusiness(req, res) {
           ELSE 99
         END
       `,
-      [businessId]
+      [businessId],
     );
 
     /* ================= TAX RECORDS ================= */
@@ -517,7 +529,7 @@ async function getBusiness(req, res) {
       WHERE tr.business_id = $1
       ORDER BY tr.tax_year DESC, tr.created_at DESC
       `,
-      [businessId]
+      [businessId],
     );
 
     /* ================= TAX DOCUMENTS ================= */
@@ -540,7 +552,7 @@ async function getBusiness(req, res) {
       )
       ORDER BY td.uploaded_at DESC
       `,
-      [businessId]
+      [businessId],
     );
 
     /* ================= BUSINESS NOTES ================= */
@@ -554,7 +566,7 @@ async function getBusiness(req, res) {
       FROM business_notes nt
       LEFT JOIN app_users au ON nt.created_by = au.id
       WHERE nt.business_id = $1`,
-      [businessId]
+      [businessId],
     );
 
     /* ================= TAX NOTES ================= */
@@ -569,12 +581,12 @@ async function getBusiness(req, res) {
       LEFT JOIN app_users au ON tn.created_by = au.id
       LEFT JOIN business_tax_records tr ON tr.id = tn.business_tax_record_id
       WHERE tr.business_id = $1`,
-      [businessId]
+      [businessId],
     );
 
     /* ================= COMBINE NOTES ================= */
     const allNotes = [...businessNotesRes.rows, ...taxNotesRes.rows].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      (a, b) => new Date(b.created_at) - new Date(a.created_at),
     );
 
     /* ================= HYDRATION ================= */
@@ -662,6 +674,19 @@ async function patchBusiness(req, res) {
       }
     }
 
+    // Handle loyalty separately with validation
+    if (payload.loyalty !== undefined) {
+      let loyalty = null;
+      if (payload.loyalty !== null) {
+        const loyaltyNum = Number(payload.loyalty);
+        if (!isNaN(loyaltyNum)) {
+          loyalty = Math.max(0, Math.min(10, Math.round(loyaltyNum)));
+        }
+      }
+      sets.push(`loyalty = $${vals.length + 1}`);
+      vals.push(loyalty);
+    }
+
     if (sets.length) {
       sets.push(`updated_at = now()`);
       vals.push(id);
@@ -670,7 +695,7 @@ async function patchBusiness(req, res) {
         `UPDATE business_clients SET ${sets.join(", ")} WHERE id = $${
           vals.length
         }`,
-        vals
+        vals,
       );
     }
 
@@ -694,7 +719,7 @@ async function patchBusiness(req, res) {
           WHERE business_id = $${vals.length}
             AND is_primary = true
           `,
-          vals
+          vals,
         );
       }
     }
@@ -708,7 +733,7 @@ async function patchBusiness(req, res) {
         FROM business_addresses
         WHERE business_id = $1 AND is_mailing = true
         `,
-        [id]
+        [id],
       );
 
       if (existing.rows.length) {
@@ -729,7 +754,7 @@ async function patchBusiness(req, res) {
           WHERE business_id = $${vals.length}
             AND is_mailing = true
           `,
-          vals
+          vals,
         );
       } else {
         await conn.query(
@@ -747,7 +772,7 @@ async function patchBusiness(req, res) {
             payload.mailingAddress.province ?? null,
             payload.mailingAddress.postal_code ?? null,
             payload.mailingAddress.country ?? null,
-          ]
+          ],
         );
       }
     }
@@ -768,28 +793,28 @@ async function patchBusiness(req, res) {
 
         // frequency
         if (tp.frequency !== undefined) {
-          updateFields.push(`frequency = $${paramIndex}`); // ✅ Added $
+          updateFields.push(`frequency = $${paramIndex}`);
           values.push(tp.frequency);
           paramIndex++;
         }
 
         // start_date
         if (tp.start_date !== undefined) {
-          updateFields.push(`start_date = $${paramIndex}`); // ✅ Added $
+          updateFields.push(`start_date = $${paramIndex}`);
           values.push(tp.start_date);
           paramIndex++;
         }
 
         // start_year
         if (tp.start_year !== undefined) {
-          updateFields.push(`start_year = $${paramIndex}`); // ✅ Added $
+          updateFields.push(`start_year = $${paramIndex}`);
           values.push(tp.start_year);
           paramIndex++;
         }
 
         // start_quarter
         if (tp.start_quarter !== undefined) {
-          updateFields.push(`start_quarter = $${paramIndex}`); // ✅ Added $
+          updateFields.push(`start_quarter = $${paramIndex}`);
           values.push(tp.start_quarter);
           paramIndex++;
         }
@@ -803,7 +828,7 @@ async function patchBusiness(req, res) {
       SET ${updateFields.join(", ")}
       WHERE business_id = $1 AND tax_type = $2
       `,
-          values
+          values,
         );
       }
     }
@@ -826,7 +851,7 @@ async function deleteBusiness(req, res) {
   try {
     const r = await pool.query(
       `DELETE FROM business_clients WHERE id = $1 RETURNING id`,
-      [id]
+      [id],
     );
     if (!r.rowCount) return res.status(404).json({ error: "not_found" });
 
@@ -906,7 +931,7 @@ async function createTaxRecord(req, res) {
 
     const b = await conn.query(
       `SELECT id FROM business_clients WHERE id = $1`,
-      [businessId]
+      [businessId],
     );
     if (!b.rows.length) {
       await conn.query("ROLLBACK");
@@ -925,7 +950,7 @@ async function createTaxRecord(req, res) {
         AND ($3::smallint IS NULL OR tax_year = $3::smallint)
         AND ($4::text IS NULL OR tax_period = $4::text)
       `,
-      [businessId, tax_type, yearForCheck, tax_period ?? null]
+      [businessId, tax_type, yearForCheck, tax_period ?? null],
     );
     if (dup.rows.length) {
       await conn.query("ROLLBACK");
@@ -970,7 +995,7 @@ async function createTaxRecord(req, res) {
         slip_information ?? null,
         update_renewal ?? null,
         req.user.id,
-      ]
+      ],
     );
 
     const taxRecord = rows[0];
@@ -983,7 +1008,7 @@ async function createTaxRecord(req, res) {
         (business_tax_record_id, note_text, created_by)
         VALUES ($1, $2, $3)
         `,
-        [taxRecord.id, note.trim(), req.user.id]
+        [taxRecord.id, note.trim(), req.user.id],
       );
     }
 
@@ -1017,7 +1042,7 @@ async function patchTaxRecord(req, res) {
       WHERE id = $1 AND business_id = $2
       FOR UPDATE
       `,
-      [taxRecordId, businessId]
+      [taxRecordId, businessId],
     );
 
     if (!check.rows.length) {
@@ -1069,7 +1094,7 @@ async function patchTaxRecord(req, res) {
 
     const { rows } = await pool.query(
       `SELECT * FROM business_tax_records WHERE id = $1`,
-      [taxRecordId]
+      [taxRecordId],
     );
 
     res.json({ success: true, tax_record: rows[0] });
@@ -1091,7 +1116,7 @@ async function deleteTaxRecord(req, res) {
       WHERE id = $1 AND business_id = $2
       RETURNING id
       `,
-      [taxRecordId, businessId]
+      [taxRecordId, businessId],
     );
 
     if (!result.rowCount) {
@@ -1196,7 +1221,7 @@ async function createBusinessShareholder(req, res) {
           sinEncrypted || null,
           sinHash || null,
           createdBy,
-        ]
+        ],
       );
 
       resolvedClientId = insertClient.rows[0].id;
@@ -1235,7 +1260,7 @@ async function createBusinessShareholder(req, res) {
         hasStandalone ? sinEncrypted : null,
         hasStandalone ? sinHash : null,
         share_percentage,
-      ]
+      ],
     );
 
     await conn.query("COMMIT");
@@ -1274,7 +1299,7 @@ async function deleteBusinessShareholder(req, res) {
       WHERE id = $1 AND business_id = $2
       FOR UPDATE
       `,
-      [shareholderId, businessId]
+      [shareholderId, businessId],
     );
 
     if (!checkRes.rows.length) {
@@ -1287,7 +1312,7 @@ async function deleteBusinessShareholder(req, res) {
       DELETE FROM business_shareholders
       WHERE id = $1 AND business_id = $2
       `,
-      [shareholderId, businessId]
+      [shareholderId, businessId],
     );
 
     await client.query("COMMIT");
@@ -1316,7 +1341,7 @@ async function insertNote(req, res) {
     // Verify business exists
     const businessCheck = await conn.query(
       "SELECT id FROM business_clients WHERE id = $1",
-      [businessId]
+      [businessId],
     );
     if (!businessCheck.rows.length) {
       await conn.query("ROLLBACK");
@@ -1329,7 +1354,7 @@ async function insertNote(req, res) {
        (business_id, note_text, created_by)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [businessId, note, userId]
+      [businessId, note, userId],
     );
 
     await conn.query("COMMIT");
@@ -1357,7 +1382,7 @@ async function deleteNote(req, res) {
   try {
     const result = await pool.query(
       "DELETE FROM business_notes WHERE id = $1 AND business_id = $2 RETURNING id",
-      [NoteId, businessId]
+      [NoteId, businessId],
     );
 
     if (result.rowCount === 0) {
@@ -1406,7 +1431,7 @@ async function patchNote(req, res) {
        WHERE id = $2
          AND business_id = $3
        RETURNING *`,
-      [note.trim(), noteId, businessId]
+      [note.trim(), noteId, businessId],
     );
 
     if (result.rowCount === 0) {
@@ -1448,7 +1473,7 @@ async function getTaxNotes(req, res) {
          ON u.id = n.created_by
        WHERE n.business_tax_record_id = $1
        ORDER BY n.created_at DESC`,
-      [taxRecordId]
+      [taxRecordId],
     );
 
     return res.json(result.rows);
@@ -1476,7 +1501,7 @@ async function insertTaxNote(req, res) {
 
     const recordCheck = await conn.query(
       "SELECT id FROM business_tax_records WHERE id = $1",
-      [taxRecordId]
+      [taxRecordId],
     );
 
     if (!recordCheck.rows.length) {
@@ -1489,7 +1514,7 @@ async function insertTaxNote(req, res) {
        (business_tax_record_id, note_text, created_by)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [taxRecordId, note.trim(), userId]
+      [taxRecordId, note.trim(), userId],
     );
 
     await conn.query("COMMIT");
@@ -1529,7 +1554,7 @@ async function patchTaxNote(req, res) {
        WHERE id = $2
          AND business_tax_record_id = $3
        RETURNING *`,
-      [note.trim(), noteId, taxRecordId]
+      [note.trim(), noteId, taxRecordId],
     );
 
     if (result.rowCount === 0) {
@@ -1567,7 +1592,7 @@ async function deleteTaxNote(req, res) {
        WHERE id = $1
          AND business_tax_record_id = $2
        RETURNING id`,
-      [noteId, taxRecordId]
+      [noteId, taxRecordId],
     );
 
     if (result.rowCount === 0) {

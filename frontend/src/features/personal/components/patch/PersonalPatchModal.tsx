@@ -16,6 +16,7 @@ interface PatchForm {
   dateOfMarriage: string;
   fax: string;
   loyalty: string;
+  loyaltySince: string;
   referredBy: string;
   // Address fields
   addressLine1: string;
@@ -106,7 +107,8 @@ export default function PersonalPatchModal({
       email: client?.email ?? "",
       dateOfMarriage: formatDateForInput(client?.date_of_marriage),
       fax: client?.fax ?? "",
-      loyalty: formatDateForInput(client?.loyalty_since),
+      loyalty: client?.loyalty ?? "",
+      loyaltySince: formatDateForInput(client?.loyalty_since),
       referredBy: client?.referred_by ?? "",
       // Address fields
       addressLine1: firstAddress?.address_line1 ?? "",
@@ -135,7 +137,8 @@ export default function PersonalPatchModal({
       email: "email",
       dateOfMarriage: "date_of_marriage",
       fax: "fax",
-      loyalty: "loyalty_since",
+      loyalty: "loyalty",
+      loyaltySince: "loyalty_since",
       referredBy: "referred_by",
       addressLine1: "address_line1",
       addressLine2: "address_line2",
@@ -394,16 +397,16 @@ export default function PersonalPatchModal({
                 </div>
 
                 <div className={styles.formField}>
-                  <label htmlFor="loyalty">Loyalty Since</label>
+                  <label htmlFor="loyaltySince">Loyalty Since</label>
                   <input
-                    id="loyalty"
+                    id="loyaltySince"
                     type="date"
-                    {...register("loyalty")}
-                    aria-invalid={!!errors.loyalty}
+                    {...register("loyaltySince")}
+                    aria-invalid={!!errors.loyaltySince}
                   />
-                  {errors.loyalty && (
+                  {errors.loyaltySince && (
                     <div role="alert" className={styles.errorText}>
-                      {errors.loyalty.message}
+                      {errors.loyaltySince.message}
                     </div>
                   )}
                 </div>
@@ -443,6 +446,36 @@ export default function PersonalPatchModal({
                   {errors.fax && (
                     <div role="alert" className={styles.errorText}>
                       {errors.fax.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={styles.formRow}>
+                {" "}
+                <div className={styles.formField}>
+                  <label htmlFor="loyalty">Loyalty</label>
+                  <input
+                    id="loyalty"
+                    type="number"
+                    {...register("loyalty", {
+                      min: {
+                        value: 0,
+                        message: "Loyalty must be at least 0",
+                      },
+                      max: {
+                        value: 10,
+                        message: "Loyalty must be at most 10",
+                      },
+                    })}
+                    aria-invalid={!!errors.loyalty}
+                    placeholder="Enter a number between 0-10"
+                    min="0"
+                    max="10"
+                    step="1"
+                  />
+                  {errors.loyalty && (
+                    <div role="alert" className={styles.errorText}>
+                      {errors.loyalty.message}
                     </div>
                   )}
                 </div>

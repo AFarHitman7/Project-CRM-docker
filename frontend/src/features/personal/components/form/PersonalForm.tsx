@@ -27,6 +27,7 @@ export interface ClientForm {
   addresses: Address[];
   fax?: string;
   loyalty?: string;
+  loyaltySince?: string;
   referredBy?: string;
   createdBy?: string;
   notes?: string[];
@@ -118,6 +119,7 @@ export default function PersonalForm() {
       ],
       fax: "",
       loyalty: "",
+      loyaltySince: "",
       referredBy: "",
       createdBy: "",
       spouseFirstName: "",
@@ -449,7 +451,36 @@ export default function PersonalForm() {
                   </div>
                 )}
               </div>
+              <div className={styles.formField}>
+                <label htmlFor="loyalty">Loyalty</label>
+                <input
+                  id="loyalty"
+                  type="number"
+                  {...register("loyalty", {
+                    min: {
+                      value: 0,
+                      message: "Loyalty must be at least 0",
+                    },
+                    max: {
+                      value: 10,
+                      message: "Loyalty must be at most 10",
+                    },
+                  })}
+                  aria-invalid={!!errors.loyalty}
+                  placeholder="Enter a number between 0-10"
+                  min="0"
+                  max="10"
+                  step="1"
+                />
+                {errors.loyalty && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.loyalty.message}
+                  </div>
+                )}
+              </div>
+            </div>
 
+            <div className={styles.formRow}>
               <div className={styles.formField}>
                 <label htmlFor="marriageStatus">Marital Status</label>
                 <select
@@ -469,9 +500,6 @@ export default function PersonalForm() {
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className={styles.formRow}>
               <div
                 className={styles.formField}
                 style={isMarried ? {} : { display: "none" }}
@@ -531,8 +559,12 @@ export default function PersonalForm() {
                 )}
               </div>
               <div className={styles.formField}>
-                <label htmlFor="loyalty">Loyalty Since</label>
-                <input id="loyalty" type="date" {...register("loyalty")} />
+                <label htmlFor="loyaltySince">Loyalty Since</label>
+                <input
+                  id="loyaltySince"
+                  type="date"
+                  {...register("loyaltySince")}
+                />
               </div>
             </div>
             <div className={styles.formRow}>

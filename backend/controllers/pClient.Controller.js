@@ -30,6 +30,7 @@ const DEFAULT_LIST_FIELDS = [
   "id",
   "first_name",
   "last_name",
+  "loyalty",
   "tax_status",
   "phone",
   "email",
@@ -102,7 +103,7 @@ async function listClients(req, res) {
       whereClauses.push(
         `(c.first_name ILIKE $${params.length - 1} OR c.last_name ILIKE $${
           params.length
-        })`
+        })`,
       );
     }
 
@@ -202,7 +203,7 @@ async function getClient(req, res) {
          FROM addresses
          WHERE client_id = $1
          ORDER BY is_primary DESC, created_at ASC`,
-        [clientId]
+        [clientId],
       );
       client.addresses = addrRes.rows;
 
@@ -216,7 +217,7 @@ FROM notes nt
 LEFT JOIN app_users au ON nt.created_by = au.id
 WHERE nt.client_id = $1
 ORDER BY nt.created_at DESC`,
-        [clientId]
+        [clientId],
       );
       client.notes = notesRes.rows;
 
@@ -226,7 +227,7 @@ ORDER BY nt.created_at DESC`,
          FROM dependants
          WHERE client_id = $1
          ORDER BY id ASC`,
-        [clientId]
+        [clientId],
       );
       client.dependants = depRes.rows;
 
@@ -246,7 +247,7 @@ FROM tax_records tr
 LEFT JOIN app_users au ON tr.created_by = au.id
 WHERE tr.client_id = $1
 ORDER BY tr.tax_year DESC`,
-        [clientId]
+        [clientId],
       );
 
       const hstRes = await pool.query(
@@ -263,7 +264,7 @@ ORDER BY tr.tax_year DESC`,
   WHERE client_id = $1
   ORDER BY uploaded_at DESC
   `,
-        [clientId]
+        [clientId],
       );
 
       const hstByTaxRecord = {};
@@ -297,7 +298,7 @@ ORDER BY tr.tax_year DESC`,
   WHERE bs.client_id = $1
   ORDER BY bc.business_name ASC
   `,
-        [clientId]
+        [clientId],
       );
 
       client.businesses = bizRes.rows;
@@ -308,7 +309,7 @@ ORDER BY tr.tax_year DESC`,
          FROM verifications
          WHERE entity_id = $1 AND entity_type = 'client'
          ORDER BY created_at DESC`,
-        [clientId]
+        [clientId],
       );
       client.verifications = verRes.rows;
 
@@ -327,7 +328,7 @@ ORDER BY tr.tax_year DESC`,
       WHERE client_id = $1
       LIMIT 1
       `,
-      [id]
+      [id],
     );
 
     let spouse = null;
@@ -355,343 +356,200 @@ ORDER BY tr.tax_year DESC`,
   }
 }
 
-async function createBulk(req, res) {
+async function patchClient(req, res) {
+  const clientId = req.params.id;
   const payload = req.body || {};
-  const clientsInput = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload.clients)
-    ? payload.clients
-    : null;
+  const updatedBy = req.user?.id || null;
 
-  const createdById = req.user?.id || null;
-  if (!createdById) {
-    return res.status(401).json({ error: "unauthenticated" });
-  }
+  if (!updatedBy) return res.status(401).json({ error: "unauthenticated" });
+  if (!clientId) return res.status(400).json({ error: "invalid_id" });
 
-  if (!clientsInput || clientsInput.length === 0) {
-    return res.status(400).json({ error: "no_clients_provided" });
-  }
+  const clientConn = await pool.connect();
 
-  const results = [];
-  let created = 0;
-  let failed = 0;
-
-  // Helper to normalize common keys (accept camelCase or snake_case)
-  function pick(v, ...keys) {
+  function pick(obj, ...keys) {
     for (const k of keys) {
-      if (v[k] !== undefined) return v[k];
+      if (Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
     }
     return undefined;
   }
 
-  // Insert a single client within its own transaction; returns { success, id?, error? }
-  async function insertOne(clientPayload) {
-    const clientConn = await pool.connect();
-    try {
-      await clientConn.query("BEGIN");
-      const now = new Date();
+  function nullify(v) {
+    return v === "" ? null : v;
+  }
 
-      // Basic required fields: allow camelCase or snake_case
-      const firstName = pick(clientPayload, "firstName", "first_name");
-      const lastName = pick(clientPayload, "lastName", "last_name");
-      if (!firstName || !lastName) {
-        await clientConn.query("ROLLBACK");
-        return { success: false, error: "first_name_and_last_name_required" };
-      }
+  try {
+    await clientConn.query("BEGIN");
+    const now = new Date();
 
-      // SIN handling
-      const sinRaw = nullify(
-        pick(clientPayload, "sin", "sin_raw", "sin_encrypted")
-      );
-      const sinHash = sinRaw ? sha256(sinRaw) : null;
+    // lock client
+    const checkRes = await clientConn.query(
+      `SELECT id FROM clients WHERE id = $1 FOR UPDATE`,
+      [clientId],
+    );
+    if (!checkRes.rows.length) {
+      await clientConn.query("ROLLBACK");
+      return res.status(404).json({ error: "client_not_found" });
+    }
 
-      const insertClientSql = `
-        INSERT INTO clients
-          (first_name, last_name, dob, gender, phone, email, fax, sin_encrypted, sin_hash,
-           marital_status, loyalty_since, referred_by,
-           created_by, created_at, updated_at)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-        RETURNING id
-      `;
+    // ======================
+    // CLIENT UPDATE
+    // ======================
 
-      const insertClientVals = [
-        firstName,
-        lastName,
-        nullify(pick(clientPayload, "dob")),
-        nullify(pick(clientPayload, "gender")),
-        nullify(pick(clientPayload, "phone")),
-        nullify(pick(clientPayload, "email")),
-        nullify(pick(clientPayload, "fax")),
-        sinRaw ? encrypt(sinRaw) : null,
-        sinHash,
-        nullify(pick(clientPayload, "maritalStatus", "marital_status")),
-        nullify(
-          pick(clientPayload, "loyalty", "loyalty_since", "loyaltySince")
-        ),
-        nullify(pick(clientPayload, "referredBy", "referred_by")),
-        createdById,
-        now,
-        now,
-      ];
+    const fieldMapping = {
+      firstName: "first_name",
+      lastName: "last_name",
+      dob: "dob",
+      gender: "gender",
+      phone: "phone",
+      email: "email",
+      fax: "fax",
+      maritalStatus: "marital_status",
+      loyaltySince: "loyalty_since",
+      referredBy: "referred_by",
+    };
 
-      const clientInsertRes = await clientConn.query(
-        insertClientSql,
-        insertClientVals
-      );
-      const clientId = clientInsertRes.rows[0].id;
+    const cSetters = [];
+    const cParams = [];
 
-      // Addresses
-      const addresses = Array.isArray(clientPayload.addresses)
-        ? clientPayload.addresses
-        : [];
-      const insertedAddressIds = [];
-      for (let i = 0; i < addresses.length; i++) {
-        const addr = addresses[i] || {};
-        const isPrimary = i === 0;
-        const addressSql = `
-          INSERT INTO addresses
-            (client_id, country, province, address_line1, address_line2, city, postal_code, is_primary, created_at)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-          RETURNING id
-        `;
-        const addressVals = [
-          clientId,
-          addr.countryCode || addr.country || null,
-          addr.province || null,
-          addr.line1 || addr.addressLine1 || null,
-          addr.line2 || addr.addressLine2 || null,
-          addr.city || null,
-          addr.postalCode || addr.postal_code || null,
-          isPrimary,
-          now,
-        ];
-        const r = await clientConn.query(addressSql, addressVals);
-        insertedAddressIds.push(r.rows[0].id);
-      }
-      const firstAddressId = insertedAddressIds.length
-        ? insertedAddressIds[0]
-        : null;
+    function cAdd(col, val) {
+      cSetters.push(`${col} = $${cParams.length + 1}`);
+      cParams.push(val);
+    }
 
-      // Dependants
-      const dependants = Array.isArray(clientPayload.dependents)
-        ? clientPayload.dependents
-        : [];
-      const dependantIdMap = {};
-      for (const dep of dependants) {
-        let depAddressId = null;
-        const sameAddress = pick(dep, "sameAddress", "same_address");
-        if (sameAddress) {
-          depAddressId = firstAddressId;
-        } else if (
-          dep.addressLine1 ||
-          dep.address_line1 ||
-          dep.line1 ||
-          dep.addressLine2 ||
-          dep.city
-        ) {
-          const depAddrSql = `
-            INSERT INTO addresses
-              (client_id, country, province, address_line1, address_line2, city, postal_code, is_primary, created_at)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-            RETURNING id
-          `;
-          const depCountry = pick(dep, "country") || null;
-          const depVals = [
-            clientId,
-            depCountry,
-            pick(dep, "province") || null,
-            dep.addressLine1 || dep.line1 || dep.address_line1 || null,
-            dep.addressLine2 || dep.line2 || dep.address_line2 || null,
-            dep.city || null,
-            pick(dep, "postalCode", "postal_code") || null,
-            false,
-            now,
-          ];
-          const depAddrRes = await clientConn.query(depAddrSql, depVals);
-          depAddressId = depAddrRes.rows[0].id;
+    for (const [pKey, dbCol] of Object.entries(fieldMapping)) {
+      const val = pick(payload, pKey, dbCol);
+      if (val !== undefined) cAdd(dbCol, nullify(val));
+    }
+
+    // Handle loyalty separately with validation (0-10 range)
+    if (payload.loyalty !== undefined) {
+      let loyalty = null;
+      if (payload.loyalty !== null) {
+        const loyaltyNum = Number(payload.loyalty);
+        if (!isNaN(loyaltyNum)) {
+          loyalty = Math.max(0, Math.min(10, Math.round(loyaltyNum)));
         }
-
-        const depSql = `
-          INSERT INTO dependants
-            (client_id, first_name, last_name, dob, gender, relationship, disability, disability_notes, same_address, address_id)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-          RETURNING id
-        `;
-        const depVals = [
-          clientId,
-          pick(dep, "firstName", "first_name") || null,
-          pick(dep, "lastName", "last_name") || null,
-          pick(dep, "dob") || null,
-          pick(dep, "gender") || null,
-          pick(dep, "relationship") || null,
-          pick(dep, "disability") ? true : false,
-          pick(dep, "disabilityNotes", "disability_notes") || null,
-          sameAddress ? true : false,
-          depAddressId,
-        ];
-        const insertedDep = await clientConn.query(depSql, depVals);
-        const realDepId = insertedDep.rows[0].id;
-        if (dep.tempId) dependantIdMap[dep.tempId] = realDepId;
       }
+      cAdd("loyalty", loyalty);
+    }
 
-      // Tax details (client)
-      const taxDetails = Array.isArray(clientPayload.taxDetails)
-        ? clientPayload.taxDetails
-        : [];
-      for (const t of taxDetails) {
-        const taxSql = `
-          INSERT INTO tax_records
-            (client_id, tax_year, tax_status, tax_date, hst_required, last_updated)
-          VALUES ($1,$2,$3,$4,$5,$6)
-          ON CONFLICT (client_id, tax_year) DO UPDATE
-            SET tax_status = EXCLUDED.tax_status,
-                tax_date = EXCLUDED.tax_date,
-                hst_required = EXCLUDED.hst_required,
-                last_updated = EXCLUDED.last_updated
-        `;
-        const taxVals = [
-          clientId,
-          t.taxYear
-            ? parseInt(t.taxYear, 10)
-            : t.tax_year
-            ? parseInt(t.tax_year, 10)
-            : null,
-          t.status || t.tax_status || null,
-          t.filedOn || t.tax_date || t.statusDate || null,
-          t.hstRequired !== undefined ? !!t.hstRequired : null,
-          now,
-        ];
-        await clientConn.query(taxSql, taxVals);
+    if (Object.prototype.hasOwnProperty.call(payload, "sin")) {
+      const sin = nullify(payload.sin);
+      if (sin) {
+        cAdd("sin_encrypted", encrypt(sin));
+        cAdd("sin_hash", sha256(sin));
+      } else {
+        cAdd("sin_encrypted", null);
+        cAdd("sin_hash", null);
       }
+    }
 
-      // Spouse insertion and linking
-      let spouseId = null;
-      const spouseFirst = pick(
-        clientPayload,
-        "spouseFirstName",
-        "spouse_first_name"
+    if (cSetters.length > 0) {
+      cAdd("updated_at", now);
+      const idPos = `$${cParams.length + 1}`;
+      await clientConn.query(
+        `UPDATE clients SET ${cSetters.join(", ")} WHERE id = ${idPos}`,
+        cParams.concat(clientId),
       );
-      if (spouseFirst) {
-        const spouseSin = nullify(
-          pick(clientPayload, "spouseSin", "spouse_sin")
-        );
-        const spouseSinHash = spouseSin ? sha256(spouseSin) : null;
-        const spouseSql = `
-          INSERT INTO clients
-            (first_name, last_name, dob, gender, phone, email, marital_status, sin_encrypted, sin_hash, created_by, created_at, updated_at)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12)
-          RETURNING id
-        `;
-        const spouseVals = [
-          spouseFirst,
-          pick(clientPayload, "spouseLastName", "spouse_last_name") || null,
-          pick(clientPayload, "spouseDob", "spouse_dob") || null,
-          pick(clientPayload, "spouseGender", "spouse_gender") || null,
-          pick(clientPayload, "spousePhone", "spouse_phone") || null,
-          pick(clientPayload, "spouseEmail", "spouse_email") || null,
-          pick(clientPayload, "maritalStatus", "marital_status") || null,
-          spouseSin ? encrypt(spouseSin) : null,
-          spouseSinHash,
-          createdById,
-          now,
-          now,
-        ];
-        const spouseRes = await clientConn.query(spouseSql, spouseVals);
-        spouseId = spouseRes.rows[0].id;
+    }
 
-        const linkSql = `INSERT INTO spouse_links (client_id, linked_client_id, date_of_marriage) VALUES ($1,$2,$3)`;
-        const dateOfMarriage =
-          pick(clientPayload, "dateOfMarriage", "date_of_marriage") || null;
-        await clientConn.query(linkSql, [clientId, spouseId, dateOfMarriage]);
-        await clientConn.query(linkSql, [spouseId, clientId, dateOfMarriage]);
+    // ======================
+    // ADDRESS UPDATE
+    // ======================
+
+    const addressFields = [
+      "address_line1",
+      "address_line2",
+      "city",
+      "province",
+      "postal_code",
+      "country",
+    ];
+
+    const addressPresent = addressFields.some((k) =>
+      Object.prototype.hasOwnProperty.call(payload, k),
+    );
+
+    if (addressPresent) {
+      const addrRes = await clientConn.query(
+        `SELECT id FROM addresses
+         WHERE client_id = $1
+         ORDER BY is_primary DESC, created_at ASC
+         LIMIT 1
+         FOR UPDATE`,
+        [clientId],
+      );
+
+      const aSetters = [];
+      const aParams = [];
+
+      function aAdd(col, val) {
+        aSetters.push(`${col} = $${aParams.length + 1}`);
+        aParams.push(val);
       }
 
-      // HST docs placeholder
-      if (pick(clientPayload, "attachment")) {
-        const hstSql = `
-          INSERT INTO hst_docs (client_id, filename, object_store_key, uploaded_by, uploaded_at, checksum, notes)
-          VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `;
-        await clientConn.query(hstSql, [
-          clientId,
-          pick(clientPayload, "attachment") || null,
-          pick(clientPayload, "attachment") || null,
-          createdById,
-          now,
-          pick(clientPayload, "checksum") || null,
-          pick(clientPayload, "notes") || null,
-        ]);
+      for (const col of addressFields) {
+        if (Object.prototype.hasOwnProperty.call(payload, col)) {
+          aAdd(col, nullify(payload[col]));
+        }
       }
 
-      // Spouse tax records
-      const spouseTax = Array.isArray(clientPayload.spouseTaxDetails)
-        ? clientPayload.spouseTaxDetails
-        : Array.isArray(clientPayload.spouse_tax_details)
-        ? clientPayload.spouse_tax_details
-        : [];
-      if (spouseTax.length && spouseId) {
-        for (const t of spouseTax) {
+      if (addrRes.rows.length) {
+        if (aSetters.length > 0) {
+          const idPos = `$${aParams.length + 1}`;
           await clientConn.query(
-            `INSERT INTO tax_records (client_id, tax_year, tax_status, tax_date, last_updated)
-             VALUES ($1,$2,$3,$4,$5)
-             ON CONFLICT (client_id, tax_year) DO UPDATE
-               SET tax_status = EXCLUDED.tax_status, tax_date = EXCLUDED.tax_date, last_updated = EXCLUDED.last_updated`,
-            [
-              spouseId,
-              t.taxYear
-                ? parseInt(t.taxYear, 10)
-                : t.tax_year
-                ? parseInt(t.tax_year, 10)
-                : null,
-              t.status || t.tax_status || null,
-              t.statusDate || t.tax_date || null,
-              now,
-            ]
+            `UPDATE addresses SET ${aSetters.join(", ")} WHERE id = ${idPos}`,
+            aParams.concat(addrRes.rows[0].id),
           );
         }
-      }
-
-      await clientConn.query("COMMIT");
-
-      return {
-        success: true,
-        id: clientId,
-        addressIds: insertedAddressIds,
-        dependantIdMap,
-        spouseId: spouseId || null,
-      };
-    } catch (err) {
-      await clientConn.query("ROLLBACK").catch(() => {});
-      // return error message for this item
-      return { success: false, error: err.message || "insert_failed" };
-    } finally {
-      clientConn.release();
-    }
-  }
-
-  // process sequentially to avoid DB contention and keep ordering consistent for error reporting
-  for (let i = 0; i < clientsInput.length; i++) {
-    const item = clientsInput[i];
-    try {
-      const r = await insertOne(item);
-      if (r && r.success) {
-        created++;
-        results.push({ index: i, success: true, id: r.id });
       } else {
-        failed++;
-        results.push({ index: i, success: false, error: r.error || "unknown" });
+        await clientConn.query(
+          `INSERT INTO addresses
+           (client_id, address_line1, address_line2, city, province, postal_code, country, is_primary)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,true)`,
+          [
+            clientId,
+            payload.address_line1 || null,
+            payload.address_line2 || null,
+            payload.city || null,
+            payload.province || null,
+            payload.postal_code || null,
+            payload.country || null,
+          ],
+        );
       }
-    } catch (err) {
-      failed++;
-      results.push({
-        index: i,
-        success: false,
-        error: err.message || "unexpected_error",
-      });
     }
-  }
 
-  return res.json({ created, failed, results });
+    // ======================
+    // COMMIT
+    // ======================
+
+    await clientConn.query("COMMIT");
+
+    const { rows } = await pool.query(
+      `SELECT id, first_name, last_name, dob, gender, phone, email, fax,
+              marital_status, loyalty, loyalty_since, referred_by, updated_at
+       FROM clients WHERE id = $1`,
+      [clientId],
+    );
+
+    return res.json({
+      success: true,
+      message: "Client updated successfully",
+      client: rows[0],
+    });
+  } catch (err) {
+    try {
+      await clientConn.query("ROLLBACK");
+    } catch {}
+    console.error("patchClient error:", err);
+    return res.status(500).json({
+      error: "server_error",
+      details: err.message,
+    });
+  } finally {
+    clientConn.release();
+  }
 }
 
 async function createPersonal(req, res) {
@@ -712,6 +570,15 @@ async function createPersonal(req, res) {
     await clientConn.query("BEGIN");
     const now = new Date();
 
+    // Validate and clamp loyalty value
+    let loyalty = null;
+    if (payload.loyalty !== undefined && payload.loyalty !== null) {
+      const loyaltyNum = Number(payload.loyalty);
+      if (!isNaN(loyaltyNum)) {
+        loyalty = Math.max(0, Math.min(10, Math.round(loyaltyNum)));
+      }
+    }
+
     // 1) Insert main client
     const sin = nullify(payload.sin);
     const sinHash = sin ? sha256(sin) : null;
@@ -719,9 +586,9 @@ async function createPersonal(req, res) {
     const insertClientSql = `
       INSERT INTO clients
         (first_name, last_name, dob, gender, phone, email, fax, sin_encrypted, sin_hash,
-         marital_status, loyalty_since, referred_by,
+         marital_status, loyalty, loyalty_since, referred_by,
          created_by, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING id
     `;
     const insertClientVals = [
@@ -735,7 +602,8 @@ async function createPersonal(req, res) {
       sin ? encrypt(sin) : null,
       sinHash,
       payload.maritalStatus || null,
-      payload.loyalty || null,
+      loyalty,
+      payload.loyaltySince || null,
       payload.referredBy || null,
       createdById, // must be UUID
       now,
@@ -744,7 +612,7 @@ async function createPersonal(req, res) {
 
     const clientInsertRes = await clientConn.query(
       insertClientSql,
-      insertClientVals
+      insertClientVals,
     );
     const clientId = clientInsertRes.rows[0].id;
 
@@ -961,7 +829,7 @@ async function createPersonal(req, res) {
             t.status || t.tax_status || null,
             t.statusDate || t.tax_date || null,
             now,
-          ]
+          ],
         );
       }
     }
@@ -983,6 +851,345 @@ async function createPersonal(req, res) {
   } finally {
     clientConn.release();
   }
+}
+
+async function createBulk(req, res) {
+  const payload = req.body || {};
+  const clientsInput = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload.clients)
+      ? payload.clients
+      : null;
+
+  const createdById = req.user?.id || null;
+  if (!createdById) {
+    return res.status(401).json({ error: "unauthenticated" });
+  }
+
+  if (!clientsInput || clientsInput.length === 0) {
+    return res.status(400).json({ error: "no_clients_provided" });
+  }
+
+  const results = [];
+  let created = 0;
+  let failed = 0;
+
+  // Helper to normalize common keys (accept camelCase or snake_case)
+  function pick(v, ...keys) {
+    for (const k of keys) {
+      if (v[k] !== undefined) return v[k];
+    }
+    return undefined;
+  }
+
+  // Insert a single client within its own transaction; returns { success, id?, error? }
+  async function insertOne(clientPayload) {
+    const clientConn = await pool.connect();
+    try {
+      await clientConn.query("BEGIN");
+      const now = new Date();
+
+      // Basic required fields: allow camelCase or snake_case
+      const firstName = pick(clientPayload, "firstName", "first_name");
+      const lastName = pick(clientPayload, "lastName", "last_name");
+      if (!firstName || !lastName) {
+        await clientConn.query("ROLLBACK");
+        return { success: false, error: "first_name_and_last_name_required" };
+      }
+
+      // SIN handling
+      const sinRaw = nullify(
+        pick(clientPayload, "sin", "sin_raw", "sin_encrypted"),
+      );
+      const sinHash = sinRaw ? sha256(sinRaw) : null;
+
+      const insertClientSql = `
+        INSERT INTO clients
+          (first_name, last_name, dob, gender, phone, email, fax, sin_encrypted, sin_hash,
+           marital_status, loyalty_since, referred_by,
+           created_by, created_at, updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        RETURNING id
+      `;
+
+      const insertClientVals = [
+        firstName,
+        lastName,
+        nullify(pick(clientPayload, "dob")),
+        nullify(pick(clientPayload, "gender")),
+        nullify(pick(clientPayload, "phone")),
+        nullify(pick(clientPayload, "email")),
+        nullify(pick(clientPayload, "fax")),
+        sinRaw ? encrypt(sinRaw) : null,
+        sinHash,
+        nullify(pick(clientPayload, "maritalStatus", "marital_status")),
+        nullify(
+          pick(clientPayload, "loyalty", "loyalty_since", "loyaltySince"),
+        ),
+        nullify(pick(clientPayload, "referredBy", "referred_by")),
+        createdById,
+        now,
+        now,
+      ];
+
+      const clientInsertRes = await clientConn.query(
+        insertClientSql,
+        insertClientVals,
+      );
+      const clientId = clientInsertRes.rows[0].id;
+
+      // Addresses
+      const addresses = Array.isArray(clientPayload.addresses)
+        ? clientPayload.addresses
+        : [];
+      const insertedAddressIds = [];
+      for (let i = 0; i < addresses.length; i++) {
+        const addr = addresses[i] || {};
+        const isPrimary = i === 0;
+        const addressSql = `
+          INSERT INTO addresses
+            (client_id, country, province, address_line1, address_line2, city, postal_code, is_primary, created_at)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          RETURNING id
+        `;
+        const addressVals = [
+          clientId,
+          addr.countryCode || addr.country || null,
+          addr.province || null,
+          addr.line1 || addr.addressLine1 || null,
+          addr.line2 || addr.addressLine2 || null,
+          addr.city || null,
+          addr.postalCode || addr.postal_code || null,
+          isPrimary,
+          now,
+        ];
+        const r = await clientConn.query(addressSql, addressVals);
+        insertedAddressIds.push(r.rows[0].id);
+      }
+      const firstAddressId = insertedAddressIds.length
+        ? insertedAddressIds[0]
+        : null;
+
+      // Dependants
+      const dependants = Array.isArray(clientPayload.dependents)
+        ? clientPayload.dependents
+        : [];
+      const dependantIdMap = {};
+      for (const dep of dependants) {
+        let depAddressId = null;
+        const sameAddress = pick(dep, "sameAddress", "same_address");
+        if (sameAddress) {
+          depAddressId = firstAddressId;
+        } else if (
+          dep.addressLine1 ||
+          dep.address_line1 ||
+          dep.line1 ||
+          dep.addressLine2 ||
+          dep.city
+        ) {
+          const depAddrSql = `
+            INSERT INTO addresses
+              (client_id, country, province, address_line1, address_line2, city, postal_code, is_primary, created_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+            RETURNING id
+          `;
+          const depCountry = pick(dep, "country") || null;
+          const depVals = [
+            clientId,
+            depCountry,
+            pick(dep, "province") || null,
+            dep.addressLine1 || dep.line1 || dep.address_line1 || null,
+            dep.addressLine2 || dep.line2 || dep.address_line2 || null,
+            dep.city || null,
+            pick(dep, "postalCode", "postal_code") || null,
+            false,
+            now,
+          ];
+          const depAddrRes = await clientConn.query(depAddrSql, depVals);
+          depAddressId = depAddrRes.rows[0].id;
+        }
+
+        const depSql = `
+          INSERT INTO dependants
+            (client_id, first_name, last_name, dob, gender, relationship, disability, disability_notes, same_address, address_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          RETURNING id
+        `;
+        const depVals = [
+          clientId,
+          pick(dep, "firstName", "first_name") || null,
+          pick(dep, "lastName", "last_name") || null,
+          pick(dep, "dob") || null,
+          pick(dep, "gender") || null,
+          pick(dep, "relationship") || null,
+          pick(dep, "disability") ? true : false,
+          pick(dep, "disabilityNotes", "disability_notes") || null,
+          sameAddress ? true : false,
+          depAddressId,
+        ];
+        const insertedDep = await clientConn.query(depSql, depVals);
+        const realDepId = insertedDep.rows[0].id;
+        if (dep.tempId) dependantIdMap[dep.tempId] = realDepId;
+      }
+
+      // Tax details (client)
+      const taxDetails = Array.isArray(clientPayload.taxDetails)
+        ? clientPayload.taxDetails
+        : [];
+      for (const t of taxDetails) {
+        const taxSql = `
+          INSERT INTO tax_records
+            (client_id, tax_year, tax_status, tax_date, hst_required, last_updated)
+          VALUES ($1,$2,$3,$4,$5,$6)
+          ON CONFLICT (client_id, tax_year) DO UPDATE
+            SET tax_status = EXCLUDED.tax_status,
+                tax_date = EXCLUDED.tax_date,
+                hst_required = EXCLUDED.hst_required,
+                last_updated = EXCLUDED.last_updated
+        `;
+        const taxVals = [
+          clientId,
+          t.taxYear
+            ? parseInt(t.taxYear, 10)
+            : t.tax_year
+              ? parseInt(t.tax_year, 10)
+              : null,
+          t.status || t.tax_status || null,
+          t.filedOn || t.tax_date || t.statusDate || null,
+          t.hstRequired !== undefined ? !!t.hstRequired : null,
+          now,
+        ];
+        await clientConn.query(taxSql, taxVals);
+      }
+
+      // Spouse insertion and linking
+      let spouseId = null;
+      const spouseFirst = pick(
+        clientPayload,
+        "spouseFirstName",
+        "spouse_first_name",
+      );
+      if (spouseFirst) {
+        const spouseSin = nullify(
+          pick(clientPayload, "spouseSin", "spouse_sin"),
+        );
+        const spouseSinHash = spouseSin ? sha256(spouseSin) : null;
+        const spouseSql = `
+          INSERT INTO clients
+            (first_name, last_name, dob, gender, phone, email, marital_status, sin_encrypted, sin_hash, created_by, created_at, updated_at)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12)
+          RETURNING id
+        `;
+        const spouseVals = [
+          spouseFirst,
+          pick(clientPayload, "spouseLastName", "spouse_last_name") || null,
+          pick(clientPayload, "spouseDob", "spouse_dob") || null,
+          pick(clientPayload, "spouseGender", "spouse_gender") || null,
+          pick(clientPayload, "spousePhone", "spouse_phone") || null,
+          pick(clientPayload, "spouseEmail", "spouse_email") || null,
+          pick(clientPayload, "maritalStatus", "marital_status") || null,
+          spouseSin ? encrypt(spouseSin) : null,
+          spouseSinHash,
+          createdById,
+          now,
+          now,
+        ];
+        const spouseRes = await clientConn.query(spouseSql, spouseVals);
+        spouseId = spouseRes.rows[0].id;
+
+        const linkSql = `INSERT INTO spouse_links (client_id, linked_client_id, date_of_marriage) VALUES ($1,$2,$3)`;
+        const dateOfMarriage =
+          pick(clientPayload, "dateOfMarriage", "date_of_marriage") || null;
+        await clientConn.query(linkSql, [clientId, spouseId, dateOfMarriage]);
+        await clientConn.query(linkSql, [spouseId, clientId, dateOfMarriage]);
+      }
+
+      // HST docs placeholder
+      if (pick(clientPayload, "attachment")) {
+        const hstSql = `
+          INSERT INTO hst_docs (client_id, filename, object_store_key, uploaded_by, uploaded_at, checksum, notes)
+          VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `;
+        await clientConn.query(hstSql, [
+          clientId,
+          pick(clientPayload, "attachment") || null,
+          pick(clientPayload, "attachment") || null,
+          createdById,
+          now,
+          pick(clientPayload, "checksum") || null,
+          pick(clientPayload, "notes") || null,
+        ]);
+      }
+
+      // Spouse tax records
+      const spouseTax = Array.isArray(clientPayload.spouseTaxDetails)
+        ? clientPayload.spouseTaxDetails
+        : Array.isArray(clientPayload.spouse_tax_details)
+          ? clientPayload.spouse_tax_details
+          : [];
+      if (spouseTax.length && spouseId) {
+        for (const t of spouseTax) {
+          await clientConn.query(
+            `INSERT INTO tax_records (client_id, tax_year, tax_status, tax_date, last_updated)
+             VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (client_id, tax_year) DO UPDATE
+               SET tax_status = EXCLUDED.tax_status, tax_date = EXCLUDED.tax_date, last_updated = EXCLUDED.last_updated`,
+            [
+              spouseId,
+              t.taxYear
+                ? parseInt(t.taxYear, 10)
+                : t.tax_year
+                  ? parseInt(t.tax_year, 10)
+                  : null,
+              t.status || t.tax_status || null,
+              t.statusDate || t.tax_date || null,
+              now,
+            ],
+          );
+        }
+      }
+
+      await clientConn.query("COMMIT");
+
+      return {
+        success: true,
+        id: clientId,
+        addressIds: insertedAddressIds,
+        dependantIdMap,
+        spouseId: spouseId || null,
+      };
+    } catch (err) {
+      await clientConn.query("ROLLBACK").catch(() => {});
+      // return error message for this item
+      return { success: false, error: err.message || "insert_failed" };
+    } finally {
+      clientConn.release();
+    }
+  }
+
+  // process sequentially to avoid DB contention and keep ordering consistent for error reporting
+  for (let i = 0; i < clientsInput.length; i++) {
+    const item = clientsInput[i];
+    try {
+      const r = await insertOne(item);
+      if (r && r.success) {
+        created++;
+        results.push({ index: i, success: true, id: r.id });
+      } else {
+        failed++;
+        results.push({ index: i, success: false, error: r.error || "unknown" });
+      }
+    } catch (err) {
+      failed++;
+      results.push({
+        index: i,
+        success: false,
+        error: err.message || "unexpected_error",
+      });
+    }
+  }
+
+  return res.json({ created, failed, results });
 }
 
 async function createSpouse(req, res) {
@@ -1012,7 +1219,7 @@ async function createSpouse(req, res) {
     if (payload.spouseClientId) {
       const check = await clientConn.query(
         `SELECT id FROM clients WHERE id = $1`,
-        [payload.spouseClientId]
+        [payload.spouseClientId],
       );
 
       if (!check.rows.length) {
@@ -1107,7 +1314,7 @@ async function deleteClient(req, res) {
     // Lock the client row to avoid concurrent edits
     const chk = await conn.query(
       `SELECT id, first_name, last_name FROM clients WHERE id = $1 FOR UPDATE`,
-      [clientId]
+      [clientId],
     );
     if (!chk.rows.length) {
       await conn.query("ROLLBACK");
@@ -1117,7 +1324,7 @@ async function deleteClient(req, res) {
     // Collect all linked spouses
     const links = await conn.query(
       `SELECT linked_client_id FROM spouse_links WHERE client_id = $1`,
-      [clientId]
+      [clientId],
     );
     const linkedIds = links.rows.map((r) => r.linked_client_id).filter(Boolean);
 
@@ -1133,20 +1340,20 @@ async function deleteClient(req, res) {
         `UPDATE clients
          SET marital_status = NULL, updated_at = now()
          WHERE id = ANY($1)`,
-        [linkedIds]
+        [linkedIds],
       );
 
       // Remove reciprocal spouse_links rows (linked -> client)
       await conn.query(
         `DELETE FROM spouse_links WHERE client_id = ANY($1) AND linked_client_id = $2`,
-        [linkedIds, clientId]
+        [linkedIds, clientId],
       );
     }
 
     // Remove this client's links (client -> linked)
     await conn.query(
       `DELETE FROM spouse_links WHERE client_id = $1 OR linked_client_id = $1`,
-      [clientId]
+      [clientId],
     );
 
     // Delete client row. Replace with UPDATE ... SET deleted_at = now() if soft-delete desired.
@@ -1171,190 +1378,6 @@ async function deleteClient(req, res) {
   }
 }
 
-async function patchClient(req, res) {
-  const clientId = req.params.id;
-  const payload = req.body || {};
-  const updatedBy = req.user?.id || null;
-
-  if (!updatedBy) return res.status(401).json({ error: "unauthenticated" });
-  if (!clientId) return res.status(400).json({ error: "invalid_id" });
-
-  const clientConn = await pool.connect();
-
-  function pick(obj, ...keys) {
-    for (const k of keys) {
-      if (Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
-    }
-    return undefined;
-  }
-
-  function nullify(v) {
-    return v === "" ? null : v;
-  }
-
-  try {
-    await clientConn.query("BEGIN");
-    const now = new Date();
-
-    // lock client
-    const checkRes = await clientConn.query(
-      `SELECT id FROM clients WHERE id = $1 FOR UPDATE`,
-      [clientId]
-    );
-    if (!checkRes.rows.length) {
-      await clientConn.query("ROLLBACK");
-      return res.status(404).json({ error: "client_not_found" });
-    }
-
-    // ======================
-    // CLIENT UPDATE
-    // ======================
-
-    const fieldMapping = {
-      firstName: "first_name",
-      lastName: "last_name",
-      dob: "dob",
-      gender: "gender",
-      phone: "phone",
-      email: "email",
-      fax: "fax",
-      maritalStatus: "marital_status",
-      loyalty: "loyalty_since",
-      referredBy: "referred_by",
-    };
-
-    const cSetters = [];
-    const cParams = [];
-
-    function cAdd(col, val) {
-      cSetters.push(`${col} = $${cParams.length + 1}`);
-      cParams.push(val);
-    }
-
-    for (const [pKey, dbCol] of Object.entries(fieldMapping)) {
-      const val = pick(payload, pKey, dbCol);
-      if (val !== undefined) cAdd(dbCol, nullify(val));
-    }
-
-    if (Object.prototype.hasOwnProperty.call(payload, "sin")) {
-      const sin = nullify(payload.sin);
-      if (sin) {
-        cAdd("sin_encrypted", encrypt(sin));
-        cAdd("sin_hash", sha256(sin));
-      } else {
-        cAdd("sin_encrypted", null);
-        cAdd("sin_hash", null);
-      }
-    }
-
-    if (cSetters.length > 0) {
-      cAdd("updated_at", now);
-      const idPos = `$${cParams.length + 1}`;
-      await clientConn.query(
-        `UPDATE clients SET ${cSetters.join(", ")} WHERE id = ${idPos}`,
-        cParams.concat(clientId)
-      );
-    }
-
-    // ======================
-    // ADDRESS UPDATE
-    // ======================
-
-    const addressFields = [
-      "address_line1",
-      "address_line2",
-      "city",
-      "province",
-      "postal_code",
-      "country",
-    ];
-
-    const addressPresent = addressFields.some((k) =>
-      Object.prototype.hasOwnProperty.call(payload, k)
-    );
-
-    if (addressPresent) {
-      const addrRes = await clientConn.query(
-        `SELECT id FROM addresses
-         WHERE client_id = $1
-         ORDER BY is_primary DESC, created_at ASC
-         LIMIT 1
-         FOR UPDATE`,
-        [clientId]
-      );
-
-      const aSetters = [];
-      const aParams = [];
-
-      function aAdd(col, val) {
-        aSetters.push(`${col} = $${aParams.length + 1}`);
-        aParams.push(val);
-      }
-
-      for (const col of addressFields) {
-        if (Object.prototype.hasOwnProperty.call(payload, col)) {
-          aAdd(col, nullify(payload[col]));
-        }
-      }
-
-      if (addrRes.rows.length) {
-        if (aSetters.length > 0) {
-          const idPos = `$${aParams.length + 1}`;
-          await clientConn.query(
-            `UPDATE addresses SET ${aSetters.join(", ")} WHERE id = ${idPos}`,
-            aParams.concat(addrRes.rows[0].id)
-          );
-        }
-      } else {
-        await clientConn.query(
-          `INSERT INTO addresses
-           (client_id, address_line1, address_line2, city, province, postal_code, country, is_primary)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,true)`,
-          [
-            clientId,
-            payload.address_line1 || null,
-            payload.address_line2 || null,
-            payload.city || null,
-            payload.province || null,
-            payload.postal_code || null,
-            payload.country || null,
-          ]
-        );
-      }
-    }
-
-    // ======================
-    // COMMIT
-    // ======================
-
-    await clientConn.query("COMMIT");
-
-    const { rows } = await pool.query(
-      `SELECT id, first_name, last_name, dob, gender, phone, email, fax,
-              marital_status, loyalty_since, referred_by, updated_at
-       FROM clients WHERE id = $1`,
-      [clientId]
-    );
-
-    return res.json({
-      success: true,
-      message: "Client updated successfully",
-      client: rows[0],
-    });
-  } catch (err) {
-    try {
-      await clientConn.query("ROLLBACK");
-    } catch {}
-    console.error("patchClient error:", err);
-    return res.status(500).json({
-      error: "server_error",
-      details: err.message,
-    });
-  } finally {
-    clientConn.release();
-  }
-}
-
 async function insertAddress(req, res) {
   const clientId = req.params.id;
   const { line1, line2, city, province, postalCode, country, isPrimary } =
@@ -1374,7 +1397,7 @@ async function insertAddress(req, res) {
     // Verify client exists
     const clientCheck = await conn.query(
       "SELECT id FROM clients WHERE id = $1",
-      [clientId]
+      [clientId],
     );
     if (!clientCheck.rows.length) {
       await conn.query("ROLLBACK");
@@ -1385,7 +1408,7 @@ async function insertAddress(req, res) {
     if (isPrimary) {
       await conn.query(
         "UPDATE addresses SET is_primary = false WHERE client_id = $1",
-        [clientId]
+        [clientId],
       );
     }
 
@@ -1404,7 +1427,7 @@ async function insertAddress(req, res) {
         postalCode || null,
         country || null,
         isPrimary || false,
-      ]
+      ],
     );
 
     await conn.query("COMMIT");
@@ -1432,7 +1455,7 @@ async function deleteAddress(req, res) {
   try {
     const result = await pool.query(
       "DELETE FROM addresses WHERE id = $1 AND client_id = $2 RETURNING id",
-      [addressId, clientId]
+      [addressId, clientId],
     );
 
     if (result.rowCount === 0) {
@@ -1468,7 +1491,7 @@ async function insertNote(req, res) {
     // Verify client exists
     const clientCheck = await conn.query(
       "SELECT id FROM clients WHERE id = $1",
-      [clientId]
+      [clientId],
     );
     if (!clientCheck.rows.length) {
       await conn.query("ROLLBACK");
@@ -1481,7 +1504,7 @@ async function insertNote(req, res) {
        (client_id, note_text, created_by)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [clientId, note, userId]
+      [clientId, note, userId],
     );
 
     await conn.query("COMMIT");
@@ -1509,7 +1532,7 @@ async function deleteNote(req, res) {
   try {
     const result = await pool.query(
       "DELETE FROM notes WHERE id = $1 AND client_id = $2 RETURNING id",
-      [NoteId, clientId]
+      [NoteId, clientId],
     );
 
     if (result.rowCount === 0) {
@@ -1558,7 +1581,7 @@ async function patchNote(req, res) {
        WHERE id = $2
          AND client_id = $3
        RETURNING *`,
-      [note.trim(), noteId, clientId]
+      [note.trim(), noteId, clientId],
     );
 
     if (result.rowCount === 0) {
@@ -1618,7 +1641,7 @@ async function insertDependent(req, res) {
     // Verify client exists
     const clientCheck = await conn.query(
       "SELECT id FROM clients WHERE id = $1",
-      [clientId]
+      [clientId],
     );
     if (!clientCheck.rows.length) {
       await conn.query("ROLLBACK");
@@ -1632,7 +1655,7 @@ async function insertDependent(req, res) {
       // Use client's primary address
       const primaryAddr = await conn.query(
         "SELECT id FROM addresses WHERE client_id = $1 AND is_primary = true LIMIT 1",
-        [clientId]
+        [clientId],
       );
       depAddressId = primaryAddr.rows[0]?.id || null;
     } else if (addressId) {
@@ -1653,7 +1676,7 @@ async function insertDependent(req, res) {
           province || null,
           postalCode || null,
           country || null,
-        ]
+        ],
       );
       depAddressId = addrResult.rows[0].id;
     }
@@ -1675,7 +1698,7 @@ async function insertDependent(req, res) {
         disabilityNotes || null,
         sameAddress || false,
         depAddressId,
-      ]
+      ],
     );
 
     await conn.query("COMMIT");
@@ -1707,7 +1730,7 @@ async function deleteDependent(req, res) {
     // Get dependent info to check for associated address
     const depCheck = await conn.query(
       "SELECT id, address_id, same_address FROM dependants WHERE id = $1 AND client_id = $2",
-      [dependentId, clientId]
+      [dependentId, clientId],
     );
 
     if (!depCheck.rows.length) {
@@ -1723,14 +1746,14 @@ async function deleteDependent(req, res) {
     // Delete dependent
     await conn.query(
       "DELETE FROM dependants WHERE id = $1 AND client_id = $2",
-      [dependentId, clientId]
+      [dependentId, clientId],
     );
 
     // If dependent had their own address (not same as client), delete it
     if (dependent.address_id && !dependent.same_address) {
       await conn.query(
         "DELETE FROM addresses WHERE id = $1 AND client_id = $2",
-        [dependent.address_id, clientId]
+        [dependent.address_id, clientId],
       );
     }
 
@@ -1779,7 +1802,7 @@ async function insertTaxRecord(req, res) {
     // Verify client exists
     const clientCheck = await conn.query(
       "SELECT id FROM clients WHERE id = $1",
-      [clientId]
+      [clientId],
     );
     if (!clientCheck.rows.length) {
       await conn.query("ROLLBACK");
@@ -1789,7 +1812,7 @@ async function insertTaxRecord(req, res) {
     // Check if tax record already exists
     const existingRecord = await conn.query(
       "SELECT id FROM tax_records WHERE client_id = $1 AND tax_year = $2",
-      [clientId, yearInt]
+      [clientId, yearInt],
     );
 
     if (existingRecord.rows.length > 0) {
@@ -1814,7 +1837,7 @@ async function insertTaxRecord(req, res) {
         hstRequired !== undefined ? hstRequired : null,
         createdById,
         preparedBy,
-      ]
+      ],
     );
 
     await conn.query("COMMIT");
@@ -1842,7 +1865,7 @@ async function deleteTaxRecord(req, res) {
   try {
     const result = await pool.query(
       "DELETE FROM tax_records WHERE client_id = $1 AND id = $2 RETURNING id, tax_year",
-      [clientId, taxId]
+      [clientId, taxId],
     );
 
     if (result.rowCount === 0) {
@@ -1881,7 +1904,7 @@ async function patchTaxRecord(req, res) {
     // Verify tax record belongs to client
     const checkRes = await conn.query(
       `SELECT id FROM tax_records WHERE id = $1 AND client_id = $2 FOR UPDATE`,
-      [taxId, clientId]
+      [taxId, clientId],
     );
 
     if (!checkRes.rows.length) {
@@ -1918,7 +1941,7 @@ async function patchTaxRecord(req, res) {
     // Execute update
     const idPlaceholder = `$${params.length + 1}`;
     const sql = `UPDATE tax_records SET ${setters.join(
-      ", "
+      ", ",
     )} WHERE id = ${idPlaceholder}`;
     const finalParams = params.concat([taxId]);
 
@@ -1934,7 +1957,7 @@ async function patchTaxRecord(req, res) {
     // Fetch updated record
     const { rows } = await pool.query(
       `SELECT * FROM tax_records WHERE id = $1`,
-      [taxId]
+      [taxId],
     );
 
     return res.json({
@@ -1975,7 +1998,7 @@ async function patchDependent(req, res) {
     // Verify dependent belongs to client
     const checkRes = await conn.query(
       `SELECT id FROM dependants WHERE id = $1 AND client_id = $2 FOR UPDATE`,
-      [dependentId, clientId]
+      [dependentId, clientId],
     );
 
     if (!checkRes.rows.length) {
@@ -2012,7 +2035,7 @@ async function patchDependent(req, res) {
     // Execute update
     const idPlaceholder = `$${params.length + 1}`;
     const sql = `UPDATE dependants SET ${setters.join(
-      ", "
+      ", ",
     )} WHERE id = ${idPlaceholder}`;
     const finalParams = params.concat([dependentId]);
 
@@ -2028,7 +2051,7 @@ async function patchDependent(req, res) {
     // Fetch updated record
     const { rows } = await pool.query(
       `SELECT * FROM dependants WHERE id = $1`,
-      [dependentId]
+      [dependentId],
     );
 
     return res.json({

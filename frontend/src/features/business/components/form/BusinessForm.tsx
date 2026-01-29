@@ -36,6 +36,7 @@ export interface BusinessForm {
   fiscalYearEndMonth: string;
   fiscalYearEndDay: string;
   ontarioCorpNumber?: string;
+  loyalty?: string;
 
   addresses: Address[];
   mailingAddress?: Address;
@@ -126,6 +127,7 @@ export default function BusinessForm() {
       incorporationJurisdiction: "",
       fiscalYearEnd: "",
       ontarioCorpNumber: "",
+      loyalty: "",
       addresses: [
         {
           line1: "",
@@ -431,6 +433,35 @@ export default function BusinessForm() {
                 inputMode="numeric"
               />
             </div>
+            <div className={styles.formField}>
+              <label htmlFor="loyalty">Loyalty</label>
+              <input
+                id="loyalty"
+                type="number"
+                {...register("loyalty", {
+                  min: {
+                    value: 0,
+                    message: "Loyalty must be at least 0",
+                  },
+                  max: {
+                    value: 10,
+                    message: "Loyalty must be at most 10",
+                  },
+                })}
+                aria-invalid={!!errors.loyalty}
+                placeholder="Enter a number between 0-10"
+                min="0"
+                max="10"
+                step="1"
+              />
+              {errors.loyalty && (
+                <div role="alert" className={styles.errorText}>
+                  {errors.loyalty.message}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className={styles.formRow}>
             {isFederation && (
               <div className={styles.formField}>
                 <label htmlFor="annualRenewalDate">Annual Renewal Date</label>

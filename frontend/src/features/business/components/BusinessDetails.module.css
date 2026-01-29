@@ -288,6 +288,13 @@ td .buttonContainer {
   color: #1f2937;
 }
 
+.table td .button {
+  background-color: #1792e7;
+}
+.table td .button:hover {
+  background-color: #1274b9;
+}
+
 .taxYear {
   font-weight: 500;
 }
@@ -364,7 +371,9 @@ td .buttonContainer {
   color: #555;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tabBtn:hover {

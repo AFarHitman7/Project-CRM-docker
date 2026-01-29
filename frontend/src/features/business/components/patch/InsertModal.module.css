@@ -258,6 +258,7 @@
   font-weight: 500;
   color: white;
   transition: all 0.2s;
+  background-color: #1792e7;
 }
 
 .submitButton:hover {
