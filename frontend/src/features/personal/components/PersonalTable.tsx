@@ -2,6 +2,7 @@
 import React from "react";
 import styles from "./PersonalTable.module.css";
 import { useNavigate } from "react-router-dom";
+import { FaStar, FaRegStar } from "react-icons/fa";
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 type Row = string[];
@@ -120,11 +121,11 @@ const getStatusOrder = (status: string): number => {
   const normalized = status.toLowerCase().trim();
   // Lower number = higher priority
   switch (normalized) {
-    case "inprogress":
+    case "paperreceived":
       return 1;
-    case "readyforreview":
+    case "inprogress":
       return 2;
-    case "paperrecieved":
+    case "readytofile":
       return 3;
     case "filedon":
       return 4;
@@ -296,7 +297,46 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
                   <span>{row[2]}</span>
                 </td>
                 {/* Loyalty */}
-                <td className={styles.tableCell}>{row[3]}</td>
+                <td className={styles.tableCell}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: "1px" }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star}>
+                          {Number(row[3]) >= star ? (
+                            <FaStar
+                              style={{ color: "#FFD700", fontSize: "12px" }}
+                            />
+                          ) : (
+                            <FaRegStar
+                              style={{ color: "#FFD700", fontSize: "12px" }}
+                            />
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "1px" }}>
+                      {[6, 7, 8, 9, 10].map((star) => (
+                        <span key={star}>
+                          {Number(row[3]) >= star ? (
+                            <FaStar
+                              style={{ color: "#FFD700", fontSize: "12px" }}
+                            />
+                          ) : (
+                            <FaRegStar
+                              style={{ color: "#FFD700", fontSize: "12px" }}
+                            />
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </td>
                 {/* Phone */}
                 <td className={styles.tableCell}>{row[4]}</td>
                 {/* Email */}

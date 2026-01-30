@@ -2,6 +2,7 @@
 import React from "react";
 import styles from "./BusinessTable.module.css";
 import { useNavigate } from "react-router-dom";
+import { FaRegStar, FaStar } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -227,7 +228,47 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
             >
               {/* 3. Render cells matching the order in getData */}
               <td className={styles.tableCell}>{row[1]}</td> {/* Name */}
-              <td className={styles.tableCell}>{row[2]}</td> {/* Loyalty */}
+              {/* Loyalty */}
+              <td className={styles.tableCell}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "1px" }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star}>
+                        {Number(row[2]) >= star ? (
+                          <FaStar
+                            style={{ color: "#FFD700", fontSize: "12px" }}
+                          />
+                        ) : (
+                          <FaRegStar
+                            style={{ color: "#FFD700", fontSize: "12px" }}
+                          />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: "1px" }}>
+                    {[6, 7, 8, 9, 10].map((star) => (
+                      <span key={star}>
+                        {Number(row[2]) >= star ? (
+                          <FaStar
+                            style={{ color: "#FFD700", fontSize: "12px" }}
+                          />
+                        ) : (
+                          <FaRegStar
+                            style={{ color: "#FFD700", fontSize: "12px" }}
+                          />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </td>
               <td className={styles.tableCell}>{row[3]}</td> {/* Type */}
               <td className={styles.tableCell}>{row[4]}</td> {/* Number */}
               <td className={styles.tableCell}>{row[5]}</td> {/* Phone */}

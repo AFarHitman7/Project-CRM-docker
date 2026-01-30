@@ -127,13 +127,13 @@
 }
 
 .today {
-  background-color: #2563eb;
+  background-color: #1792e7;
   color: #ffffff;
   border-radius: 6px;
   font-weight: 600;
 }
 .today:hover {
-  background-color: #1e40af;
+  background-color: #1274b9;
 }
 
 /* --- PROFILE LIST SECTION --- */
