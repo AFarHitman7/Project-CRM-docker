@@ -52,7 +52,6 @@ function App() {
           <Route path="personal/:id" element={<PersonalDetails />} />
 
           <Route path="business/:id" element={<BusinessDetails />} />
-          <Route path="add_business" element={<AddBusiness />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="profile" element={<Profile />} />
         </Route>

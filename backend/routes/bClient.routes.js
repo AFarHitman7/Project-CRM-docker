@@ -6,6 +6,7 @@ const {
   getBusiness,
   patchBusiness,
   deleteBusiness,
+  createBusinessBulk,
   createTaxRecord,
   patchTaxRecord,
   deleteTaxRecord,
@@ -28,6 +29,7 @@ router.post("/", createBusiness);
 router.get("/:id", getBusiness);
 router.patch("/edit/:id", patchBusiness);
 router.delete("/:id", requireRole("admin"), deleteBusiness);
+router.post("/bulk", requireRole("admin"), createBusinessBulk);
 
 //tax records
 router.post("/:businessId/tax-records", createTaxRecord);
@@ -35,7 +37,7 @@ router.patch("/:businessId/tax-records/:taxRecordId", patchTaxRecord);
 router.delete(
   "/:businessId/tax-records/:taxRecordId",
   requireRole("admin"),
-  deleteTaxRecord
+  deleteTaxRecord,
 );
 
 //shareholder
@@ -43,7 +45,7 @@ router.post("/:businessId/shareholders", createBusinessShareholder);
 router.delete(
   "/:businessId/shareholders/:shareholderId",
   requireRole("admin"),
-  deleteBusinessShareholder
+  deleteBusinessShareholder,
 );
 
 // notes
@@ -59,13 +61,13 @@ router.post("/tax-records/:taxRecordId/notes", insertTaxNote);
 router.patch(
   "/tax-records/:taxRecordId/notes/:noteId",
   requireRole("admin"),
-  patchTaxNote
+  patchTaxNote,
 );
 
 router.delete(
   "/tax-records/:taxRecordId/notes/:noteId",
   requireRole("admin"),
-  deleteTaxNote
+  deleteTaxNote,
 );
 
 // export router

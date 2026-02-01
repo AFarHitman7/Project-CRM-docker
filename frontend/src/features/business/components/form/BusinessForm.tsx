@@ -1,9 +1,12 @@
 // BusinessForm.tsx
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import BulkUploadModal from "./BulkUpload";
 import BusinessAddressSection from "./BusinessAddressSection";
 import styles from "./BusinessForm.module.css";
 import { useNavigate } from "react-router-dom";
+
+import { MdOutlineFileUpload } from "react-icons/md";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -99,10 +102,7 @@ function validateBusinessNumber(value = "") {
   // Base BN only
   if (/^\d{9}$/.test(v)) return true;
 
-  // BN + program account (RT/RP/RC + 4 digits)
-  if (/^\d{9}(RT|RP|RC)\d{4}$/.test(v)) return true;
-
-  return "Enter a valid Business Number (e.g. 123456789 or 123456789RT0001)";
+  return "Enter a valid Business Number (e.g. 123456789)";
 }
 
 /* ================= COMPONENT ================= */
@@ -158,6 +158,7 @@ export default function BusinessForm() {
 
   const [noteFields, setNoteFields] = useState<number[]>([0]);
   const [showMailingAddress, setShowMailingAddress] = useState(false);
+  const [bulkModalVisible, setBulkModalVisible] = useState(false);
 
   const incorporationJurisdiction = watch("incorporationJurisdiction");
   const isFederation = incorporationJurisdiction === "Federal";
@@ -262,497 +263,532 @@ export default function BusinessForm() {
     }
   };
 
+  const [user, setUser]: any = useState("");
+
+  useEffect(() => {
+    const userLocal = localStorage.getItem("user");
+    const userSession = sessionStorage.getItem("user");
+    const stored =
+      (userLocal ? JSON.parse(userLocal) : null) ||
+      (userSession ? JSON.parse(userSession) : null);
+
+    setUser(stored);
+    if (stored?.username) {
+      setValue("createdBy", stored.username, {
+        shouldDirty: false,
+        shouldValidate: false,
+      });
+    }
+  }, [setValue]);
+
   return (
-    <form className={styles.form} onSubmit={handleSubmit(onSubmit)} noValidate>
-      <section className={styles.relationSection}>
-        <section className={styles.formSection}>
-          <h3>Business Details</h3>
+    <>
+      <form
+        className={styles.form}
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+      >
+        {user?.role === "admin" && (
+          <button
+            onClick={() => {
+              setBulkModalVisible(true);
+            }}
+            className={styles.bulkButton}
+            type="button"
+          >
+            <MdOutlineFileUpload size={"1.5rem"} />
+            Bulk Upload
+          </button>
+        )}
+        <section className={styles.relationSection}>
+          <section className={styles.formSection}>
+            <h3>Business Details</h3>
 
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="businessName">Business Name *</label>
-              <input
-                id="businessName"
-                {...register("businessName", {
-                  required: "Business name is required",
-                  minLength: { value: 2, message: "Too short" },
-                })}
-                aria-invalid={!!errors.businessName}
-                placeholder="ABC Corporation Inc."
-              />
-              {errors.businessName && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.businessName.message}
-                </div>
-              )}
-            </div>
-
-            <div className={styles.formField}>
-              <label htmlFor="businessNumber">Business Number</label>
-              <input
-                id="businessNumber"
-                inputMode="numeric"
-                maxLength={15}
-                placeholder="123456789"
-                {...register("businessNumber", {
-                  validate: validateBusinessNumber,
-                })}
-                aria-invalid={!!errors.businessNumber}
-              />
-              {errors.businessNumber && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.businessNumber.message}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="businessType">CRA Access *</label>
-              <select
-                id="businessType"
-                {...register("businessType", {
-                  required: "Business type is required",
-                })}
-                aria-invalid={!!errors.businessType}
-              >
-                <option value="">Select</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-              {errors.businessType && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.businessType.message}
-                </div>
-              )}
-            </div>
-
-            <div className={styles.formField}>
-              <label htmlFor="incorporationDate">Incorporation Date *</label>
-              <input
-                id="incorporationDate"
-                type="date"
-                {...register("incorporationDate", {
-                  required: "Incorporation date is required",
-                })}
-                aria-invalid={!!errors.incorporationDate}
-              />
-              {errors.incorporationDate && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.incorporationDate.message}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="incorporationJurisdiction">
-                Incorporation Jurisdiction *
-              </label>
-              <select
-                id="incorporationJurisdiction"
-                {...register("incorporationJurisdiction", {
-                  required: "Jurisdiction is required",
-                })}
-                aria-invalid={!!errors.incorporationJurisdiction}
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Select jurisdiction
-                </option>
-                <option value="Federal">Federal</option>
-                <option value="Provincial">Provincial</option>
-              </select>
-              {errors.incorporationJurisdiction && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.incorporationJurisdiction.message}
-                </div>
-              )}
-            </div>
-
-            <div className={styles.formField}>
-              <label>Fiscal Year End *</label>
-
-              <div className={styles.inlineFields}>
-                <select
-                  {...register("fiscalYearEndDay", {
-                    required: "Day required",
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="businessName">Business Name *</label>
+                <input
+                  id="businessName"
+                  {...register("businessName", {
+                    required: "Business name is required",
+                    minLength: { value: 2, message: "Too short" },
                   })}
-                >
-                  <option value="">Day</option>
-                  {Array.from({ length: 31 }, (_, i) => {
-                    const d = String(i + 1).padStart(2, "0");
-                    return (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    );
-                  })}
-                </select>
+                  aria-invalid={!!errors.businessName}
+                  placeholder="ABC Corporation Inc."
+                />
+                {errors.businessName && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.businessName.message}
+                  </div>
+                )}
+              </div>
 
-                <select
-                  {...register("fiscalYearEndMonth", {
-                    required: "Month required",
+              <div className={styles.formField}>
+                <label htmlFor="businessNumber">Business Number</label>
+                <input
+                  id="businessNumber"
+                  inputMode="numeric"
+                  maxLength={15}
+                  placeholder="123456789"
+                  {...register("businessNumber", {
+                    validate: validateBusinessNumber,
                   })}
-                >
-                  <option value="">Month</option>
-                  {[
-                    "01",
-                    "02",
-                    "03",
-                    "04",
-                    "05",
-                    "06",
-                    "07",
-                    "08",
-                    "09",
-                    "10",
-                    "11",
-                    "12",
-                  ].map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                  aria-invalid={!!errors.businessNumber}
+                />
+                {errors.businessNumber && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.businessNumber.message}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
 
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="ontarioCorpNumber">
-                Ontario Corporation Number
-              </label>
-              <input
-                id="ontarioCorpNumber"
-                {...register("ontarioCorpNumber")}
-                placeholder="1234567"
-                inputMode="numeric"
-              />
-            </div>
-            <div className={styles.formField}>
-              <label htmlFor="loyalty">Loyalty</label>
-              <input
-                id="loyalty"
-                type="number"
-                {...register("loyalty", {
-                  min: {
-                    value: 0,
-                    message: "Loyalty must be at least 0",
-                  },
-                  max: {
-                    value: 10,
-                    message: "Loyalty must be at most 10",
-                  },
-                })}
-                aria-invalid={!!errors.loyalty}
-                placeholder="Enter a number between 0-10"
-                min="0"
-                max="10"
-                step="1"
-              />
-              {errors.loyalty && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.loyalty.message}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className={styles.formRow}>
-            {isFederation && (
+            <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label htmlFor="annualRenewalDate">Annual Renewal Date</label>
+                <label htmlFor="businessType">CRA Access *</label>
+                <select
+                  id="businessType"
+                  {...register("businessType", {
+                    required: "Business type is required",
+                  })}
+                  aria-invalid={!!errors.businessType}
+                >
+                  <option value="">Select</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+                {errors.businessType && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.businessType.message}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.formField}>
+                <label htmlFor="incorporationDate">Incorporation Date *</label>
                 <input
-                  id="annualRenewalDate"
+                  id="incorporationDate"
                   type="date"
-                  {...register("annualRenewalDate")}
+                  {...register("incorporationDate", {
+                    required: "Incorporation date is required",
+                  })}
+                  aria-invalid={!!errors.incorporationDate}
+                />
+                {errors.incorporationDate && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.incorporationDate.message}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="incorporationJurisdiction">
+                  Incorporation Jurisdiction *
+                </label>
+                <select
+                  id="incorporationJurisdiction"
+                  {...register("incorporationJurisdiction", {
+                    required: "Jurisdiction is required",
+                  })}
+                  aria-invalid={!!errors.incorporationJurisdiction}
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Select jurisdiction
+                  </option>
+                  <option value="Federal">Federal</option>
+                  <option value="Provincial">Provincial</option>
+                </select>
+                {errors.incorporationJurisdiction && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.incorporationJurisdiction.message}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.formField}>
+                <label>Fiscal Year End *</label>
+
+                <div className={styles.inlineFields}>
+                  <select
+                    {...register("fiscalYearEndDay", {
+                      required: "Day required",
+                    })}
+                  >
+                    <option value="">Day</option>
+                    {Array.from({ length: 31 }, (_, i) => {
+                      const d = String(i + 1).padStart(2, "0");
+                      return (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <select
+                    {...register("fiscalYearEndMonth", {
+                      required: "Month required",
+                    })}
+                  >
+                    <option value="">Month</option>
+                    {[
+                      "01",
+                      "02",
+                      "03",
+                      "04",
+                      "05",
+                      "06",
+                      "07",
+                      "08",
+                      "09",
+                      "10",
+                      "11",
+                      "12",
+                    ].map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="ontarioCorpNumber">
+                  Ontario Corporation Number
+                </label>
+                <input
+                  id="ontarioCorpNumber"
+                  {...register("ontarioCorpNumber")}
+                  placeholder="1234567"
+                  inputMode="numeric"
                 />
               </div>
-            )}
-          </div>
-        </section>
-
-        <BusinessAddressSection
-          control={control}
-          register={register}
-          setValue={setValue}
-          errors={errors}
-        />
-
-        <section className={styles.formSection}>
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label>
+              <div className={styles.formField}>
+                <label htmlFor="loyalty">Loyalty</label>
                 <input
-                  type="checkbox"
-                  checked={showMailingAddress}
-                  onChange={(e) => setShowMailingAddress(e.target.checked)}
-                />{" "}
-                Mailing address is different
-              </label>
+                  id="loyalty"
+                  type="number"
+                  {...register("loyalty", {
+                    min: {
+                      value: 0,
+                      message: "Loyalty must be at least 0",
+                    },
+                    max: {
+                      value: 10,
+                      message: "Loyalty must be at most 10",
+                    },
+                  })}
+                  aria-invalid={!!errors.loyalty}
+                  placeholder="Enter a number between 0-10"
+                  min="0"
+                  max="10"
+                  step="1"
+                />
+                {errors.loyalty && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.loyalty.message}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          {showMailingAddress && (
-            <>
-              <h4>Mailing Address</h4>
-              <div className={styles.formRow}>
+            <div className={styles.formRow}>
+              {isFederation && (
                 <div className={styles.formField}>
-                  <label htmlFor="mailingLine1">Address Line 1</label>
+                  <label htmlFor="annualRenewalDate">Annual Renewal Date</label>
                   <input
-                    id="mailingLine1"
-                    {...register("mailingAddress.line1")}
-                    placeholder="123 Main Street"
+                    id="annualRenewalDate"
+                    type="date"
+                    {...register("annualRenewalDate")}
                   />
-                </div>
-                <div className={styles.formField}>
-                  <label htmlFor="mailingLine2">Address Line 2</label>
-                  <input
-                    id="mailingLine2"
-                    {...register("mailingAddress.line2")}
-                    placeholder="Suite 100"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label htmlFor="mailingCity">City</label>
-                  <input
-                    id="mailingCity"
-                    {...register("mailingAddress.city")}
-                    placeholder="Toronto"
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label htmlFor="mailingProvince">Province/State</label>
-                  <input
-                    id="mailingProvince"
-                    {...register("mailingAddress.province")}
-                    placeholder="Ontario"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label htmlFor="mailingPostalCode">Postal/Zip Code</label>
-                  <input
-                    id="mailingPostalCode"
-                    {...register("mailingAddress.postalCode")}
-                    placeholder="M5H 2N2"
-                  />
-                </div>
-                <div className={styles.formField}>
-                  <label htmlFor="mailingCountry">Country</label>
-                  <input
-                    id="mailingCountry"
-                    {...register("mailingAddress.country")}
-                    placeholder="Canada"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-
-        <section className={styles.formSection}>
-          <h3>Contact Information</h3>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="contactName">Contact Name *</label>
-              <input
-                id="contactName"
-                type="text"
-                placeholder="John Doe"
-                {...register("contactName", {
-                  required: "Contact name is required",
-                  validate: (val) =>
-                    val.trim().length >= 2 || "Enter a valid contact name",
-                })}
-                aria-invalid={!!errors.contactName}
-              />
-              {errors.contactName && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.contactName.message}
                 </div>
               )}
             </div>
-            <div className={styles.formField}>
-              <label htmlFor="phone1">Phone 1 (Cell) *</label>
-              <input
-                id="phone1"
-                type="tel"
-                inputMode="tel"
-                placeholder="(416) 555-1234"
-                {...register("phone1", {
-                  required: "Phone number is required",
-                  validate: (val) => {
-                    const d = sanitizeDigits(val);
-                    if (d.length >= 10 && d.length <= 15) return true;
-                    return "Enter a valid phone number";
-                  },
-                })}
-                aria-invalid={!!errors.phone1}
-                onBlur={(e) => {
-                  const formatted = formatPhoneForDisplay(e.target.value);
-                  setValue("phone1", formatted, {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                }}
-              />
-              {errors.phone1 && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.phone1.message}
-                </div>
-              )}
-            </div>
-          </div>
+          </section>
 
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="phone2">Phone 2 (Home)</label>
-              <input
-                id="phone2"
-                type="tel"
-                inputMode="tel"
-                placeholder="(416) 555-5678"
-                {...register("phone2", {
-                  validate: (val) => {
-                    if (!val) return true;
-                    const d = sanitizeDigits(val);
-                    if (d.length >= 10 && d.length <= 15) return true;
-                    return "Enter a valid phone number";
-                  },
-                })}
-                aria-invalid={!!errors.phone2}
-                onBlur={(e) => {
-                  if (e.target.value) {
+          <BusinessAddressSection
+            control={control}
+            register={register}
+            setValue={setValue}
+            errors={errors}
+          />
+
+          <section className={styles.formSection}>
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showMailingAddress}
+                    onChange={(e) => setShowMailingAddress(e.target.checked)}
+                  />{" "}
+                  Mailing address is different
+                </label>
+              </div>
+            </div>
+
+            {showMailingAddress && (
+              <>
+                <h4>Mailing Address</h4>
+                <div className={styles.formRow}>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingLine1">Address Line 1</label>
+                    <input
+                      id="mailingLine1"
+                      {...register("mailingAddress.line1")}
+                      placeholder="123 Main Street"
+                    />
+                  </div>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingLine2">Address Line 2</label>
+                    <input
+                      id="mailingLine2"
+                      {...register("mailingAddress.line2")}
+                      placeholder="Suite 100"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingCity">City</label>
+                    <input
+                      id="mailingCity"
+                      {...register("mailingAddress.city")}
+                      placeholder="Toronto"
+                    />
+                  </div>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingProvince">Province/State</label>
+                    <input
+                      id="mailingProvince"
+                      {...register("mailingAddress.province")}
+                      placeholder="Ontario"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingPostalCode">Postal/Zip Code</label>
+                    <input
+                      id="mailingPostalCode"
+                      {...register("mailingAddress.postalCode")}
+                      placeholder="M5H 2N2"
+                    />
+                  </div>
+                  <div className={styles.formField}>
+                    <label htmlFor="mailingCountry">Country</label>
+                    <input
+                      id="mailingCountry"
+                      {...register("mailingAddress.country")}
+                      placeholder="Canada"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className={styles.formSection}>
+            <h3>Contact Information</h3>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="contactName">Contact Name *</label>
+                <input
+                  id="contactName"
+                  type="text"
+                  placeholder="John Doe"
+                  {...register("contactName", {
+                    required: "Contact name is required",
+                    validate: (val) =>
+                      val.trim().length >= 2 || "Enter a valid contact name",
+                  })}
+                  aria-invalid={!!errors.contactName}
+                />
+                {errors.contactName && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.contactName.message}
+                  </div>
+                )}
+              </div>
+              <div className={styles.formField}>
+                <label htmlFor="phone1">Phone 1 (Cell) *</label>
+                <input
+                  id="phone1"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(416) 555-1234"
+                  {...register("phone1", {
+                    required: "Phone number is required",
+                    validate: (val) => {
+                      const d = sanitizeDigits(val);
+                      if (d.length >= 10 && d.length <= 15) return true;
+                      return "Enter a valid phone number";
+                    },
+                  })}
+                  aria-invalid={!!errors.phone1}
+                  onBlur={(e) => {
                     const formatted = formatPhoneForDisplay(e.target.value);
-                    setValue("phone2", formatted, {
+                    setValue("phone1", formatted, {
                       shouldValidate: true,
                       shouldDirty: true,
                     });
-                  }
-                }}
-              />
-              {errors.phone2 && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.phone2.message}
-                </div>
-              )}
-            </div>
-            <div className={styles.formField}>
-              <label htmlFor="phone3">Phone 3 (Work)</label>
-              <input
-                id="phone3"
-                type="tel"
-                inputMode="tel"
-                placeholder="(416) 555-9012"
-                {...register("phone3", {
-                  validate: (val) => {
-                    if (!val) return true;
-                    const d = sanitizeDigits(val);
-                    if (d.length >= 10 && d.length <= 15) return true;
-                    return "Enter a valid phone number";
-                  },
-                })}
-                aria-invalid={!!errors.phone3}
-                onBlur={(e) => {
-                  if (e.target.value) {
-                    const formatted = formatPhoneForDisplay(e.target.value);
-                    setValue("phone3", formatted, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
-                  }
-                }}
-              />
-              {errors.phone3 && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.phone3.message}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="fax">Fax</label>
-              <input
-                id="fax"
-                {...register("fax", {
-                  validate: (val) => {
-                    if (!val) return true;
-                    const d = sanitizeDigits(val);
-                    if (d.length >= 10 && d.length <= 15) return true;
-                    return "Invalid fax number";
-                  },
-                })}
-                aria-invalid={!!errors.fax}
-                placeholder="(416) 555-3456"
-                inputMode="tel"
-              />
-              {errors.fax && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.fax.message}
-                </div>
-              )}
-            </div>
-            <div className={styles.formField}>
-              <label htmlFor="email">Email *</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="business@example.com"
-                {...register("email", {
-                  required: "Email is required",
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: "Invalid email",
-                  },
-                })}
-                aria-invalid={!!errors.email}
-              />
-              {errors.email && (
-                <div role="alert" className={styles.errorText}>
-                  {errors.email.message}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.formSection}>
-          <h3>Other Details</h3>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label htmlFor="loyaltySince">Loyalty Since</label>
-              <input
-                id="loyaltySince"
-                type="date"
-                {...register("loyaltySince")}
-              />
+                  }}
+                />
+                {errors.phone1 && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.phone1.message}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className={styles.formField}>
-              <label htmlFor="referredBy">Referred By</label>
-              <input
-                id="referredBy"
-                {...register("referredBy")}
-                placeholder="Referrer name"
-              />
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="phone2">Phone 2 (Home)</label>
+                <input
+                  id="phone2"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(416) 555-5678"
+                  {...register("phone2", {
+                    validate: (val) => {
+                      if (!val) return true;
+                      const d = sanitizeDigits(val);
+                      if (d.length >= 10 && d.length <= 15) return true;
+                      return "Enter a valid phone number";
+                    },
+                  })}
+                  aria-invalid={!!errors.phone2}
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      const formatted = formatPhoneForDisplay(e.target.value);
+                      setValue("phone2", formatted, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                />
+                {errors.phone2 && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.phone2.message}
+                  </div>
+                )}
+              </div>
+              <div className={styles.formField}>
+                <label htmlFor="phone3">Phone 3 (Work)</label>
+                <input
+                  id="phone3"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(416) 555-9012"
+                  {...register("phone3", {
+                    validate: (val) => {
+                      if (!val) return true;
+                      const d = sanitizeDigits(val);
+                      if (d.length >= 10 && d.length <= 15) return true;
+                      return "Enter a valid phone number";
+                    },
+                  })}
+                  aria-invalid={!!errors.phone3}
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      const formatted = formatPhoneForDisplay(e.target.value);
+                      setValue("phone3", formatted, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                />
+                {errors.phone3 && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.phone3.message}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
 
-        {/* <ShareholdersList
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="fax">Fax</label>
+                <input
+                  id="fax"
+                  {...register("fax", {
+                    validate: (val) => {
+                      if (!val) return true;
+                      const d = sanitizeDigits(val);
+                      if (d.length >= 10 && d.length <= 15) return true;
+                      return "Invalid fax number";
+                    },
+                  })}
+                  aria-invalid={!!errors.fax}
+                  placeholder="(416) 555-3456"
+                  inputMode="tel"
+                />
+                {errors.fax && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.fax.message}
+                  </div>
+                )}
+              </div>
+              <div className={styles.formField}>
+                <label htmlFor="email">Email *</label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="business@example.com"
+                  {...register("email", {
+                    required: "Email is required",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "Invalid email",
+                    },
+                  })}
+                  aria-invalid={!!errors.email}
+                />
+                {errors.email && (
+                  <div role="alert" className={styles.errorText}>
+                    {errors.email.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formSection}>
+            <h3>Other Details</h3>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label htmlFor="loyaltySince">Loyalty Since</label>
+                <input
+                  id="loyaltySince"
+                  type="date"
+                  {...register("loyaltySince")}
+                />
+              </div>
+
+              <div className={styles.formField}>
+                <label htmlFor="referredBy">Referred By</label>
+                <input
+                  id="referredBy"
+                  {...register("referredBy")}
+                  placeholder="Referrer name"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* <ShareholdersList
           control={control}
           register={register}
           setValue={setValue}
@@ -760,112 +796,126 @@ export default function BusinessForm() {
           errors={errors}
         /> */}
 
-        <section className={styles.formSection}>
-          <h3>HST Details</h3>
+          <section className={styles.formSection}>
+            <h3>HST Details</h3>
 
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label>Registration Status</label>
-              <select
-                {...register("hstStatus", { setValueAs: (v) => v === "true" })}
-              >
-                <option value="false">Not Registered</option>
-                <option value="true">Registered</option>
-              </select>
-            </div>
-
-            {hstStatus && (
+            <div className={styles.formRow}>
               <div className={styles.formField}>
-                <label htmlFor="hstFrequency">Filing Frequency *</label>
+                <label>Registration Status</label>
                 <select
-                  id="hstFrequency"
-                  {...register("hstFrequency", {
-                    required: hstStatus
-                      ? "Filing frequency is required"
-                      : false,
+                  {...register("hstStatus", {
+                    setValueAs: (v) => v === "true",
                   })}
                 >
-                  <option value="">Select frequency</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Quarterly">Quarterly</option>
-                  <option value="Yearly">Yearly</option>
+                  <option value="false">Not Registered</option>
+                  <option value="true">Registered</option>
                 </select>
               </div>
-            )}
-          </div>
-        </section>
 
-        <section className={styles.formSection}>
-          <h3>Payroll Details</h3>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label>Registration Status</label>
-              <select
-                {...register("payrollStatus", {
-                  setValueAs: (v) => v === "true",
-                })}
-              >
-                <option value="false">Not Registered</option>
-                <option value="true">Registered</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.formSection}>
-          <h3>WSIB Details</h3>
-
-          <div className={styles.formRow}>
-            <div className={styles.formField}>
-              <label>Registration Status</label>
-              <select
-                {...register("wsibStatus", { setValueAs: (v) => v === "true" })}
-              >
-                <option value="false">Not Registered</option>
-                <option value="true">Registered</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.formSection}>
-          <h3>Notes</h3>
-          <div className={styles.formRow}>
-            <div className={`${styles.formField} ${styles.textAreaField}`}>
-              {noteFields.map((_, id) => (
-                <div key={id}>
-                  <textarea
-                    id={`notes.${id}`}
-                    placeholder="Write your note here"
-                    className={styles.notesArea}
-                    inputMode="text"
-                    aria-invalid={!!errors.notes?.[id]}
-                    {...register(`notes.${id}`, {
-                      required: "Note cannot be empty",
+              {hstStatus && (
+                <div className={styles.formField}>
+                  <label htmlFor="hstFrequency">Filing Frequency *</label>
+                  <select
+                    id="hstFrequency"
+                    {...register("hstFrequency", {
+                      required: hstStatus
+                        ? "Filing frequency is required"
+                        : false,
                     })}
-                  />
-                  {errors.notes?.[id] && (
-                    <div role="alert" className={styles.errorText}>
-                      {errors.notes[id].message}
-                    </div>
-                  )}
-                  <button type="button" onClick={() => removeNote(id)}>
-                    Remove
-                  </button>
+                  >
+                    <option value="">Select frequency</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Yearly">Yearly</option>
+                  </select>
                 </div>
-              ))}
+              )}
             </div>
-            <button type="button" onClick={() => addNote()}>
-              Add Notes
-            </button>
-          </div>
-        </section>
-      </section>
+          </section>
 
-      <div className={styles.formActions}>
-        <button type="submit">Save Business Client</button>
-      </div>
-    </form>
+          <section className={styles.formSection}>
+            <h3>Payroll Details</h3>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label>Registration Status</label>
+                <select
+                  {...register("payrollStatus", {
+                    setValueAs: (v) => v === "true",
+                  })}
+                >
+                  <option value="false">Not Registered</option>
+                  <option value="true">Registered</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formSection}>
+            <h3>WSIB Details</h3>
+
+            <div className={styles.formRow}>
+              <div className={styles.formField}>
+                <label>Registration Status</label>
+                <select
+                  {...register("wsibStatus", {
+                    setValueAs: (v) => v === "true",
+                  })}
+                >
+                  <option value="false">Not Registered</option>
+                  <option value="true">Registered</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.formSection}>
+            <h3>Notes</h3>
+            <div className={styles.formRow}>
+              <div className={`${styles.formField} ${styles.textAreaField}`}>
+                {noteFields.map((_, id) => (
+                  <div key={id}>
+                    <textarea
+                      id={`notes.${id}`}
+                      placeholder="Write your note here"
+                      className={styles.notesArea}
+                      inputMode="text"
+                      aria-invalid={!!errors.notes?.[id]}
+                      {...register(`notes.${id}`, {
+                        required: "Note cannot be empty",
+                      })}
+                    />
+                    {errors.notes?.[id] && (
+                      <div role="alert" className={styles.errorText}>
+                        {errors.notes[id].message}
+                      </div>
+                    )}
+                    <button type="button" onClick={() => removeNote(id)}>
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => addNote()}>
+                Add Notes
+              </button>
+            </div>
+          </section>
+        </section>
+
+        <div className={styles.formActions}>
+          <button type="submit">Save Business Client</button>
+        </div>
+      </form>
+      <BulkUploadModal
+        visible={bulkModalVisible}
+        onClose={(result) => {
+          setBulkModalVisible(false);
+          if (result) alert(`Created ${result.created}`);
+        }}
+        apiUrl={import.meta.env.VITE_API_URL}
+        defaultCreatedBy={user?.username}
+      />
+    </>
   );
 }

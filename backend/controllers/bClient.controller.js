@@ -862,6 +862,352 @@ async function deleteBusiness(req, res) {
   }
 }
 
+async function createBusinessBulk(req, res) {
+  const payload = req.body || {};
+  const businessesInput = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload.businesses)
+      ? payload.businesses
+      : null;
+
+  const createdById = req.user?.id || null;
+  if (!createdById) {
+    return res.status(401).json({ error: "unauthenticated" });
+  }
+
+  if (!businessesInput || businessesInput.length === 0) {
+    return res.status(400).json({ error: "no_businesses_provided" });
+  }
+
+  const results = [];
+  let created = 0;
+  let failed = 0;
+
+  function pick(v, ...keys) {
+    for (const k of keys) {
+      if (v[k] !== undefined) return v[k];
+    }
+    return undefined;
+  }
+
+  function nullify(v) {
+    return v === undefined || v === "" ? null : v;
+  }
+
+  function toBool(v) {
+    return v === true || v === "true" || v === "TRUE";
+  }
+
+  const TAX_TYPE_MAP = {
+    hst: "HST",
+    corporate: "CORPORATION",
+    corporation: "CORPORATION",
+    payroll: "PAYROLL",
+    wsib: "WSIB",
+    audit: "AUDIT",
+    annualRenewal: "ANNUAL_RENEWAL",
+  };
+
+  async function insertOne(businessPayload) {
+    const conn = await pool.connect();
+    try {
+      await conn.query("BEGIN");
+      const now = new Date();
+
+      const businessName = pick(
+        businessPayload,
+        "businessName",
+        "business_name",
+      );
+      const businessType = pick(
+        businessPayload,
+        "businessType",
+        "business_type",
+      );
+      const email = pick(businessPayload, "email");
+
+      if (!businessName || !businessType || !email) {
+        await conn.query("ROLLBACK");
+        return {
+          success: false,
+          error: "business_name_type_and_email_required",
+        };
+      }
+
+      const incorporationJurisdictionRaw = pick(
+        businessPayload,
+        "incorporationJurisdiction",
+        "incorporation_jurisdiction",
+        "jurisdiction",
+      );
+      const incorporationJurisdiction =
+        incorporationJurisdictionRaw?.toLowerCase() || null;
+      const isFederal = incorporationJurisdiction === "federal";
+
+      const incorporationDateRaw = pick(
+        businessPayload,
+        "incorporationDate",
+        "incorporation_date",
+        "incorpDate",
+      );
+
+      let incorporationDate = null;
+      if (incorporationDateRaw) {
+        const d = new Date(incorporationDateRaw);
+        if (!isNaN(d.getTime())) {
+          incorporationDate = d;
+        }
+      }
+
+      let annualRenewalDate = null;
+
+      if (isFederal && incorporationDate) {
+        const d = new Date(incorporationDate);
+        d.setFullYear(d.getFullYear() + 1);
+
+        annualRenewalDate = d.toISOString().slice(0, 10);
+      }
+
+      let loyalty = null;
+      const loyaltyRaw = pick(businessPayload, "loyalty");
+      if (loyaltyRaw !== undefined && loyaltyRaw !== null) {
+        const n = Number(loyaltyRaw);
+        if (!isNaN(n)) loyalty = Math.max(0, Math.min(10, Math.round(n)));
+      }
+
+      let fiscalYearEnd = null;
+      const fiscalYearEndRaw = pick(
+        businessPayload,
+        "fiscalYearEnd",
+        "fiscal_year_end",
+      );
+      if (fiscalYearEndRaw) {
+        fiscalYearEnd = /^\d{2}-\d{2}$/.test(fiscalYearEndRaw)
+          ? `2000-${fiscalYearEndRaw}`
+          : fiscalYearEndRaw;
+      }
+
+      const businessInsert = await conn.query(
+        `
+        INSERT INTO business_clients (
+          business_name,
+          business_number,
+          business_type,
+          incorporation_date,
+          incorporation_jurisdiction,
+          fiscal_year_end,
+          ontario_corp_number,
+          contact_name,
+          phone_cell,
+          phone_home,
+          phone_work,
+          fax,
+          email,
+          loyalty_since,
+          referred_by,
+          loyalty,
+          created_by,
+          updated_by,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,$6,$7,
+          $8,$9,$10,$11,$12,
+          $13,$14,$15,$16,$17,$18,$19,$20
+        )
+        RETURNING id
+        `,
+        [
+          businessName,
+          nullify(pick(businessPayload, "businessNumber", "business_number")),
+          businessType,
+          nullify(
+            pick(
+              businessPayload,
+              "incorporationDate",
+              "incorporation_date",
+              "incorpDate",
+            ),
+          ),
+          incorporationJurisdiction,
+          nullify(fiscalYearEnd),
+          nullify(
+            pick(businessPayload, "ontarioCorpNumber", "ontario_corp_number"),
+          ),
+          nullify(pick(businessPayload, "contactName", "contact_name")),
+          nullify(pick(businessPayload, "phone1", "phonecell", "phone_cell")),
+          nullify(pick(businessPayload, "phone2", "phonehome", "phone_home")),
+          nullify(pick(businessPayload, "phone3", "phonework", "phone_work")),
+          nullify(pick(businessPayload, "fax")),
+          email,
+          nullify(pick(businessPayload, "loyaltySince", "loyalty_since")),
+          nullify(pick(businessPayload, "referredBy", "referred_by")),
+          loyalty,
+          createdById,
+          createdById,
+          now,
+          now,
+        ],
+      );
+
+      const businessId = businessInsert.rows[0].id;
+
+      const addresses = Array.isArray(businessPayload.addresses)
+        ? businessPayload.addresses
+        : [];
+
+      for (let i = 0; i < addresses.length; i++) {
+        const a = addresses[i];
+        await conn.query(
+          `
+          INSERT INTO business_addresses (
+            business_id,
+            country,
+            province,
+            address_line1,
+            address_line2,
+            city,
+            postal_code,
+            is_primary,
+            created_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          `,
+          [
+            businessId,
+            nullify(pick(a, "country", "countryCode")),
+            nullify(pick(a, "province")),
+            nullify(pick(a, "line1", "addressLine1", "address_line1")),
+            nullify(pick(a, "line2", "addressLine2", "address_line2")),
+            nullify(pick(a, "city")),
+            nullify(pick(a, "postalCode", "postal_code")),
+            i === 0,
+            now,
+          ],
+        );
+      }
+
+      const notes = Array.isArray(businessPayload.notes)
+        ? businessPayload.notes
+        : [];
+      for (const note of notes) {
+        if (note?.trim()) {
+          await conn.query(
+            `
+            INSERT INTO business_notes (business_id, note_text, created_by)
+            VALUES ($1,$2,$3)
+            `,
+            [businessId, note.trim(), createdById],
+          );
+        }
+      }
+
+      const profiles = [
+        {
+          key: "hst",
+          frequency: (
+            pick(businessPayload, "hstFrequency", "hst_frequency") ||
+            "quarterly"
+          ).toLowerCase(),
+          registered: toBool(pick(businessPayload, "hstStatus", "hst_status")),
+        },
+        {
+          key: "corporation",
+          frequency: "yearly",
+          registered: toBool(
+            pick(businessPayload, "corporateStatus", "corporate_status"),
+          ),
+        },
+        {
+          key: "payroll",
+          frequency: "monthly",
+          registered: toBool(
+            pick(businessPayload, "payrollStatus", "payroll_status"),
+          ),
+        },
+        {
+          key: "wsib",
+          frequency: "quarterly",
+          registered: toBool(
+            pick(businessPayload, "wsibStatus", "wsib_status"),
+          ),
+        },
+      ];
+
+      if (isFederal) {
+        profiles.push({
+          key: "annualRenewal",
+          frequency: "yearly",
+          registered: true,
+          start_date: annualRenewalDate,
+        });
+      }
+
+      for (const p of profiles) {
+        const dbTaxType = TAX_TYPE_MAP[p.key];
+        if (!dbTaxType) throw new Error(`invalid_tax_type:${p.key}`);
+
+        await conn.query(
+          `
+          INSERT INTO business_tax_profiles (
+            business_id,
+            tax_type,
+            frequency,
+            start_date,
+            start_year,
+            registeredstatus,
+            created_at,
+            updated_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          `,
+          [
+            businessId,
+            dbTaxType,
+            p.frequency,
+            p.start_date || null,
+            p.start_year || null,
+            p.registered,
+            now,
+            now,
+          ],
+        );
+      }
+
+      await conn.query("COMMIT");
+      return { success: true, id: businessId };
+    } catch (err) {
+      await conn.query("ROLLBACK").catch(() => {});
+      return { success: false, error: err.message || "insert_failed" };
+    } finally {
+      conn.release();
+    }
+  }
+
+  for (let i = 0; i < businessesInput.length; i++) {
+    try {
+      const r = await insertOne(businessesInput[i]);
+      if (r.success) {
+        created++;
+        results.push({ index: i, success: true, id: r.id });
+      } else {
+        failed++;
+        results.push({ index: i, success: false, error: r.error });
+      }
+    } catch (e) {
+      failed++;
+      results.push({
+        index: i,
+        success: false,
+        error: e.message || "unexpected_error",
+      });
+    }
+  }
+
+  return res.json({ created, failed, results });
+}
+
 //Tax Record Controllers
 
 async function createTaxRecord(req, res) {
@@ -1624,6 +1970,7 @@ module.exports = {
   createTaxRecord,
   patchTaxRecord,
   deleteTaxRecord,
+  createBusinessBulk,
   insertNote,
   deleteNote,
   patchNote,

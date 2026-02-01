@@ -460,10 +460,19 @@ export default function BusinessPatchModal({
 
                 <div className={styles.formField}>
                   <label>Incorporation Jurisdiction</label>
-                  <input
-                    {...register("incorporationJurisdiction")}
-                    placeholder="e.g., Ontario, Federal"
-                  />
+                  <select
+                    id="incorporationJurisdiction"
+                    {...register("incorporationJurisdiction", {
+                      required: "Jurisdiction is required",
+                    })}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>
+                      Select jurisdiction
+                    </option>
+                    <option value="Federal">Federal</option>
+                    <option value="Provincial">Provincial</option>
+                  </select>
                 </div>
               </div>
 
