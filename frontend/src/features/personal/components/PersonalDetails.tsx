@@ -298,7 +298,7 @@ export default function PersonalDetails() {
         >
           <div className={styles.header}>
             <h2 className={styles.title}>
-              {client.first_name} {client.last_name}
+              {toTitleCase(client.first_name)} {toTitleCase(client.last_name)}
               <button
                 className={styles.editBtn}
                 onClick={() => copyClientId(client.id)}

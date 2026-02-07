@@ -337,6 +337,12 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
     }
   };
 
+  function toTitleCase(str = "") {
+    if (!str) return "";
+
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
   const renderPaginationControls = () => {
     if (!enablePagination || totalPages <= 1) return null;
 
@@ -487,7 +493,7 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
                   aria-label={`Open client ${row[1] ?? row[0]}`}
                 >
                   {/* Client Name */}
-                  <td className={styles.tableCell}>{row[1]}</td>
+                  <td className={styles.tableCell}>{toTitleCase(row[1])}</td>
                   {/* Status */}
                   <td
                     className={`${styles.tableCell} ${styles.statusCell} ${
@@ -546,7 +552,7 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
                   {/* Tax Year */}
                   <td className={styles.tableCell}>{row[7]}</td>
                   {/* Spouse */}
-                  <td className={styles.tableCell}>{row[8]}</td>
+                  <td className={styles.tableCell}>{toTitleCase(row[8])}</td>
                   {/* Action Button */}
                   <td className={styles.tableCell}>
                     <button

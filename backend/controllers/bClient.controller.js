@@ -1009,10 +1009,23 @@ async function createBusinessBulk(req, res) {
         "fiscalYearEnd",
         "fiscal_year_end",
       );
+
       if (fiscalYearEndRaw) {
-        fiscalYearEnd = /^\d{2}-\d{2}$/.test(fiscalYearEndRaw)
-          ? `2000-${fiscalYearEndRaw}`
-          : fiscalYearEndRaw;
+        let d = null;
+
+        // MM-DD format
+        if (/^\d{2}-\d{2}$/.test(fiscalYearEndRaw)) {
+          d = new Date(`2000-${fiscalYearEndRaw}`);
+        }
+        // ISO or parseable date
+        else {
+          const parsed = new Date(fiscalYearEndRaw);
+          if (!isNaN(parsed.getTime())) d = parsed;
+        }
+
+        if (d && !isNaN(d.getTime())) {
+          fiscalYearEnd = d.toISOString().slice(0, 10); // YYYY-MM-DD
+        }
       }
 
       const businessInsert = await conn.query(

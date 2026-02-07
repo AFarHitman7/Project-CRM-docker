@@ -298,7 +298,9 @@ export default function BusinessDetails() {
         <div className={styles.card}>
           {/* ================= HEADER ================= */}
           <div className={styles.header}>
-            <h2 className={styles.title}>{business.business_name}</h2>
+            <h2 className={styles.title}>
+              {toTitleCase(business.business_name)}
+            </h2>
 
             <div className={styles.headerButtons}>
               <button
@@ -334,7 +336,7 @@ export default function BusinessDetails() {
               />
               <Field
                 label="Jurisdiction"
-                value={business.incorporation_jurisdiction}
+                value={toTitleCase(business.incorporation_jurisdiction)}
               />
               <Field
                 label="Fiscal Year End"

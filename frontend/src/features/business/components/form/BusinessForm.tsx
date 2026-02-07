@@ -161,7 +161,7 @@ export default function BusinessForm() {
   const [bulkModalVisible, setBulkModalVisible] = useState(false);
 
   const incorporationJurisdiction = watch("incorporationJurisdiction");
-  const isFederation = incorporationJurisdiction === "Federal";
+  const isFederation = incorporationJurisdiction === "federal";
 
   const hstStatus = watch("hstStatus");
 
@@ -398,8 +398,8 @@ export default function BusinessForm() {
                   <option value="" disabled>
                     Select jurisdiction
                   </option>
-                  <option value="Federal">Federal</option>
-                  <option value="Provincial">Provincial</option>
+                  <option value="federal">Federal</option>
+                  <option value="provincial">Provincial</option>
                 </select>
                 {errors.incorporationJurisdiction && (
                   <div role="alert" className={styles.errorText}>

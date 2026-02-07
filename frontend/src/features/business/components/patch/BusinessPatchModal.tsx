@@ -470,8 +470,8 @@ export default function BusinessPatchModal({
                     <option value="" disabled>
                       Select jurisdiction
                     </option>
-                    <option value="Federal">Federal</option>
-                    <option value="Provincial">Provincial</option>
+                    <option value="federal">Federal</option>
+                    <option value="provincial">Provincial</option>
                   </select>
                 </div>
               </div>

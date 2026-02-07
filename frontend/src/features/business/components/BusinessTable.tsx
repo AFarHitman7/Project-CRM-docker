@@ -292,6 +292,11 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
 
     return true;
   };
+  function toTitleCase(str = "") {
+    if (!str) return "";
+
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 
   const filtered = enablePagination
     ? tableData
@@ -449,7 +454,7 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
                 }}
               >
                 {/* Name */}
-                <td className={styles.tableCell}>{row[1]}</td>
+                <td className={styles.tableCell}>{toTitleCase(row[1])}</td>
                 {/* Loyalty */}
                 <td className={styles.tableCell}>
                   <div
