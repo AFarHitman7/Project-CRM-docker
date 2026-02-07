@@ -1,5 +1,5 @@
 // Clients.tsx
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Home.module.css";
 import { PersonalTable } from "../features/personal";
 import { BusinessTable } from "../features/business";
@@ -9,8 +9,33 @@ import { IoSearchSharp } from "react-icons/io5";
 
 const Clients = () => {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   const [activeTab, setActiveTab] = useState<"personal" | "business">(
-    "personal"
+    "personal",
+  );
+
+  // Debounce search: Only update debouncedSearch 500ms after user stops typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    // Cancel the timeout if search changes (user is still typing)
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
+  // Handle Enter key press for immediate search
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        // Immediate search on Enter
+        setDebouncedSearch(search);
+      }
+    },
+    [search],
   );
 
   return (
@@ -45,13 +70,26 @@ const Clients = () => {
               className={styles.searchInput}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
             />
             <IoSearchSharp className={styles.searchIcon} />
           </div>
         </div>
         <div className={styles.tableContainer}>
-          {activeTab == "personal" && <PersonalTable search={search} />}
-          {activeTab == "business" && <BusinessTable search={search} />}
+          {activeTab == "personal" && (
+            <PersonalTable
+              search={debouncedSearch}
+              enablePagination={true}
+              itemsPerPage={50}
+            />
+          )}
+          {activeTab == "business" && (
+            <BusinessTable
+              search={debouncedSearch}
+              enablePagination={true}
+              itemsPerPage={50}
+            />
+          )}{" "}
         </div>
       </div>
     </div>

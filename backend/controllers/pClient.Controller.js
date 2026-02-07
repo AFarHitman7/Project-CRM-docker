@@ -67,20 +67,21 @@ function nullify(v) {
 
 async function listClients(req, res) {
   try {
+    /* ================= QUERY PARAMS ================= */
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
+
     const rawLimit = req.query.limit;
     const limit =
       rawLimit === "0" || rawLimit === "all"
         ? null
-        : Math.min(100, parseInt(rawLimit || "200", 10));
+        : Math.min(100, parseInt(rawLimit || "50", 10));
 
-    const offset = limit ? (page - 1) * limit : null;
+    const offset = limit ? (page - 1) * limit : 0;
     const search = (req.query.search || "").trim();
     const fields = sanitizeFields(req.query.fields);
     const sort = parseSort(req.query.sort);
 
     /* ================= SELECT COLUMNS ================= */
-
     const selectCols = fields
       .map((f) => {
         if (f === "latest_tax_year") return "tr.tax_year AS latest_tax_year";
@@ -94,17 +95,36 @@ async function listClients(req, res) {
       .join(", ");
 
     /* ================= WHERE ================= */
-
     const whereClauses = [];
     const params = [];
 
     if (search) {
-      params.push(`%${search}%`, `%${search}%`);
-      whereClauses.push(
-        `(c.first_name ILIKE $${params.length - 1} OR c.last_name ILIKE $${
-          params.length
-        })`,
-      );
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const wordRegex = `(^|\\s)${escaped}`;
+
+      const hasDigits = /\d/.test(search);
+      const digitsOnly = search.replace(/\D/g, "");
+
+      if (hasDigits && digitsOnly.length >= 3) {
+        params.push(wordRegex, wordRegex, `%${digitsOnly}%`, wordRegex);
+        whereClauses.push(
+          `(
+            c.first_name ~* $${params.length - 3} OR
+            c.last_name  ~* $${params.length - 2} OR
+            REGEXP_REPLACE(c.phone, '[^0-9]', '', 'g') ILIKE $${params.length - 1} OR
+            c.email ~* $${params.length}
+          )`,
+        );
+      } else {
+        params.push(wordRegex, wordRegex, wordRegex);
+        whereClauses.push(
+          `(
+            c.first_name ~* $${params.length - 2} OR
+            c.last_name  ~* $${params.length - 1} OR
+            c.email      ~* $${params.length}
+          )`,
+        );
+      }
     }
 
     if (req.user?.tenant_id) {
@@ -117,11 +137,11 @@ async function listClients(req, res) {
       : "";
 
     /* ================= PAGINATION ================= */
-
     const paginationSql = limit
       ? `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
       : "";
 
+    /* ================= LIST QUERY ================= */
     const listSql = `
       SELECT ${selectCols}
       FROM clients c
@@ -143,18 +163,18 @@ async function listClients(req, res) {
     const listRes = await pool.query(listSql, listParams);
 
     /* ================= COUNT ================= */
-
     const countSql = `SELECT COUNT(1) AS total FROM clients c ${whereSql}`;
     const countRes = await pool.query(countSql, params);
     const total = Number(countRes.rows[0]?.total || 0);
 
+    /* ================= RESPONSE ================= */
     return res.json({
       data: listRes.rows,
       meta: {
         total,
         page: limit ? page : 1,
         per_page: limit ?? total,
-        pages: limit ? Math.ceil(total / limit) : 1,
+        pages: limit ? Math.max(1, Math.ceil(total / limit)) : 1,
       },
     });
   } catch (err) {

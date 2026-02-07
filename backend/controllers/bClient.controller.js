@@ -25,6 +25,14 @@ function normalizeQuarter(q) {
   return null;
 }
 
+const DEFAULT_LIST_FIELDS = [
+  "id",
+  "business_name",
+  "email",
+  "phone",
+  "created_at",
+];
+
 const TAX_TYPE_MAP = {
   hst: "HST",
   corporate: "CORPORATION",
@@ -38,21 +46,32 @@ const TAX_TYPE_MAP = {
 async function listClients(req, res) {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
-    const limit = Math.min(100, parseInt(req.query.limit || "50", 10));
-    const offset = (page - 1) * limit;
+
+    const rawLimit = req.query.limit;
+    const limit =
+      rawLimit === "0" || rawLimit === "all"
+        ? null
+        : Math.min(100, parseInt(rawLimit || "50", 10));
+
+    const offset = limit ? (page - 1) * limit : 0;
     const search = (req.query.search || "").trim();
 
     const params = [];
     const where = [];
 
+    /* ========== TRUE WORD-START SEARCH ========== */
     if (search) {
-      params.push(`%${search}%`);
-      where.push(`bc.business_name ILIKE $${params.length}`);
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const wordStartRegex = `\\m${escaped}`;
+
+      params.push(wordStartRegex);
+      where.push(`bc.business_name ~* $${params.length}`);
     }
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-    const dataSql = `
+    /* ========== DATA QUERY ========== */
+    let dataSql = `
       SELECT
         bc.id,
         bc.business_name,
@@ -67,23 +86,32 @@ async function listClients(req, res) {
       FROM business_clients bc
       ${whereSql}
       ORDER BY bc.created_at DESC
-      LIMIT $${params.length + 1}
-      OFFSET $${params.length + 2}
     `;
 
-    const dataRes = await pool.query(dataSql, [...params, limit, offset]);
+    if (limit) {
+      params.push(limit, offset);
+      dataSql += ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    }
 
+    const dataRes = await pool.query(dataSql, params);
+
+    /* ========== COUNT QUERY ========== */
     const countRes = await pool.query(
       `SELECT COUNT(*) FROM business_clients bc ${whereSql}`,
-      params,
+      params.slice(0, where.length),
     );
+
+    const total = Number(countRes.rows[0].count);
+    const perPage = limit ?? total;
+    const pages = perPage > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1;
 
     res.json({
       data: dataRes.rows,
       meta: {
-        total: Number(countRes.rows[0].count),
+        total,
         page,
-        per_page: limit,
+        per_page: perPage,
+        pages,
       },
     });
   } catch (err) {

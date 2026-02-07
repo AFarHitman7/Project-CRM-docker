@@ -1,4 +1,4 @@
-// PersonalTable.tsx
+// PersonalTable.tsx - Fixed with proper server-side search
 import React from "react";
 import styles from "./PersonalTable.module.css";
 import { useNavigate } from "react-router-dom";
@@ -21,6 +21,17 @@ interface ClientData {
   spouse_name?: string;
 }
 
+/** API Response */
+interface ApiResponse {
+  data: ClientData[];
+  meta: {
+    total: number;
+    page: number;
+    per_page: number;
+    pages: number;
+  };
+}
+
 /** props for PersonalTable */
 interface PersonalTableProps {
   search?: string;
@@ -29,6 +40,8 @@ interface PersonalTableProps {
   filterFn?: (row: Row) => boolean;
   limit?: number;
   data?: Row[];
+  enablePagination?: boolean;
+  itemsPerPage?: number;
 }
 
 const headers: string[] = [
@@ -43,24 +56,39 @@ const headers: string[] = [
   "",
 ];
 
-const getData = async (): Promise<Row[]> => {
+const getData = async (
+  page: number = 1,
+  limit: number = 50,
+  search: string = "",
+): Promise<{ rows: Row[]; meta: ApiResponse["meta"] }> => {
   try {
     const token = localStorage.getItem("token");
 
-    const response = await fetch(`${API_URL}/api/pClient/?limit=0`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    // Build query params
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("limit", limit.toString());
+    if (search.trim()) {
+      params.append("search", search.trim());
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/pClient/?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || "Failed to fetch data");
     }
 
-    const result = await response.json();
+    const result: ApiResponse = await response.json();
 
     // Extract clients from the response
     const clients: ClientData[] = result.data || [];
@@ -79,7 +107,7 @@ const getData = async (): Promise<Row[]> => {
       ];
     });
 
-    return rows;
+    return { rows, meta: result.meta };
   } catch (error: any) {
     console.error("Error fetching data:", error);
     throw error;
@@ -159,20 +187,79 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
   filterFn,
   limit,
   data,
+  enablePagination = false,
+  itemsPerPage = 50,
 }) => {
   const navigate = useNavigate();
   const [tableData, setTableData] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [totalItems, setTotalItems] = React.useState(0);
+
+  // Keep track of previous search to detect changes
+  const prevSearchRef = React.useRef(search);
+
+  React.useEffect(() => {
+    // Reset to page 1 when search changes
+    if (search !== prevSearchRef.current) {
+      setCurrentPage(1);
+      prevSearchRef.current = search;
+    }
+  }, [search]);
+
   React.useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const result = await getData();
-        // Sort the data after fetching
-        const sorted = sortRows(result);
-        setTableData(sorted);
+
+        if (enablePagination) {
+          // Server-side pagination with search
+          const { rows, meta } = await getData(
+            currentPage,
+            itemsPerPage,
+            search,
+          );
+          setTableData(rows);
+          setTotalPages(meta.pages);
+          setTotalItems(meta.total);
+        } else {
+          // Fetch all data (limit=0)
+          const token = localStorage.getItem("token");
+          const response = await fetch(`${API_URL}/api/pClient/?limit=0`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Failed to fetch data");
+          }
+
+          const result: ApiResponse = await response.json();
+          const clients: ClientData[] = result.data || [];
+
+          const rows = clients.map((client) => [
+            client.id || "",
+            `${client.first_name || ""} ${client.last_name || ""}`.trim(),
+            client.tax_status || "N/A",
+            client.loyalty || "-",
+            client.phone || "N/A",
+            client.email || "N/A",
+            client.latest_tax_date ? formatDate(client.latest_tax_date) : "N/A",
+            client.latest_tax_year?.toString() || "N/A",
+            client.spouse_name || "N/A",
+          ]);
+
+          const sorted = sortRows(rows);
+          setTableData(sorted);
+        }
       } catch (err: any) {
         console.error("Fetch error:", err);
         setError(err.message);
@@ -190,7 +277,7 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
       setTableData(sorted);
       setLoading(false);
     }
-  }, [data]);
+  }, [data, currentPage, enablePagination, itemsPerPage, search]);
 
   const goToClient = (rawId?: string | number) => {
     const raw = rawId == null ? "" : String(rawId);
@@ -206,7 +293,8 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
   const matchesFilters = (row: Row): boolean => {
     if (typeof filterFn === "function") return !!filterFn(row);
 
-    if (normalizedSearch) {
+    if (normalizedSearch && !enablePagination) {
+      // Client-side search only when pagination is disabled
       // Check each cell, excluding spouse column (index 8)
       for (let idx = 0; idx < row.length; idx++) {
         // Skip spouse column (index 8)
@@ -236,7 +324,116 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
 
     return true;
   };
-  const filtered = tableData.filter(matchesFilters);
+
+  const filtered = enablePagination
+    ? tableData
+    : tableData.filter(matchesFilters);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Scroll to top of table when page changes
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const renderPaginationControls = () => {
+    if (!enablePagination || totalPages <= 1) return null;
+
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <div className={styles.paginationContainer}>
+        <div className={styles.paginationInfo}>
+          Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}{" "}
+          to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}{" "}
+          {totalItems === 1 ? "client" : "clients"}
+        </div>
+        <div className={styles.paginationControls}>
+          <button
+            className={styles.paginationButton}
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            aria-label="First page"
+          >
+            «
+          </button>
+          <button
+            className={styles.paginationButton}
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            aria-label="Previous page"
+          >
+            ‹
+          </button>
+          {startPage > 1 && (
+            <>
+              <button
+                className={styles.paginationButton}
+                onClick={() => handlePageChange(1)}
+              >
+                1
+              </button>
+              {startPage > 2 && (
+                <span className={styles.paginationEllipsis}>...</span>
+              )}
+            </>
+          )}
+          {pageNumbers.map((pageNum) => (
+            <button
+              key={pageNum}
+              className={`${styles.paginationButton} ${
+                currentPage === pageNum ? styles.paginationActive : ""
+              }`}
+              onClick={() => handlePageChange(pageNum)}
+            >
+              {pageNum}
+            </button>
+          ))}
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && (
+                <span className={styles.paginationEllipsis}>...</span>
+              )}
+              <button
+                className={styles.paginationButton}
+                onClick={() => handlePageChange(totalPages)}
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+          <button
+            className={styles.paginationButton}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            aria-label="Next page"
+          >
+            ›
+          </button>
+          <button
+            className={styles.paginationButton}
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            aria-label="Last page"
+          >
+            »
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return <div className={styles.loading}>Loading...</div>;
@@ -247,125 +444,131 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
   }
 
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          {headers.map((h, idx) => (
-            <th key={idx} className={styles.tableHeader}>
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-
-      <tbody>
-        {filtered.length === 0 ? (
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
           <tr>
-            <td
-              colSpan={headers.length}
-              style={{ textAlign: "center", padding: "20px" }}
-            >
-              No clients found
-            </td>
+            {headers.map((h, idx) => (
+              <th key={idx} className={styles.tableHeader}>
+                {h}
+              </th>
+            ))}
           </tr>
-        ) : (
-          filtered
-            .slice(0, limit ? limit : filtered.length)
-            .map((row, rIdx) => (
-              <tr
-                key={rIdx}
-                className={styles.rowClickable}
-                onClick={() => goToClient(row[0])}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToClient(row[0]);
-                  }
-                }}
-                role="link"
-                aria-label={`Open client ${row[1] ?? row[0]}`}
+        </thead>
+
+        <tbody>
+          {filtered.length === 0 ? (
+            <tr>
+              <td
+                colSpan={headers.length}
+                style={{ textAlign: "center", padding: "20px" }}
               >
-                {/* Client Name */}
-                <td className={styles.tableCell}>{row[1]}</td>
-                {/* Status */}
-                <td
-                  className={`${styles.tableCell} ${styles.statusCell} ${
-                    styles[row[2].toLowerCase()]
-                  }`}
-                >
-                  <span>{row[2]}</span>
-                </td>
-                {/* Loyalty */}
-                <td className={styles.tableCell}>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0",
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: "1px" }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span key={star}>
-                          {Number(row[3]) >= star ? (
-                            <FaStar
-                              style={{ color: "#FFD700", fontSize: "12px" }}
-                            />
-                          ) : (
-                            <FaRegStar
-                              style={{ color: "#FFD700", fontSize: "12px" }}
-                            />
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: "1px" }}>
-                      {[6, 7, 8, 9, 10].map((star) => (
-                        <span key={star}>
-                          {Number(row[3]) >= star ? (
-                            <FaStar
-                              style={{ color: "#FFD700", fontSize: "12px" }}
-                            />
-                          ) : (
-                            <FaRegStar
-                              style={{ color: "#FFD700", fontSize: "12px" }}
-                            />
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </td>
-                {/* Phone */}
-                <td className={styles.tableCell}>{row[4]}</td>
-                {/* Email */}
-                <td className={styles.tableCell}>{row[5]}</td>
-                {/* Last Filed */}
-                <td className={styles.tableCell}>{row[6]}</td>
-                {/* Tax Year */}
-                <td className={styles.tableCell}>{row[7]}</td>
-                {/* Spouse */}
-                <td className={styles.tableCell}>{row[8]}</td>
-                {/* Action Button */}
-                <td className={styles.tableCell}>
-                  <button
-                    type="button"
-                    className={styles.viewBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                {search
+                  ? `No clients found matching "${search}"`
+                  : "No clients found"}
+              </td>
+            </tr>
+          ) : (
+            filtered
+              .slice(0, limit ? limit : filtered.length)
+              .map((row, rIdx) => (
+                <tr
+                  key={rIdx}
+                  className={styles.rowClickable}
+                  onClick={() => goToClient(row[0])}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
                       goToClient(row[0]);
-                    }}
-                    aria-label={`View details for ${row[1] ?? row[0]}`}
+                    }
+                  }}
+                  role="link"
+                  aria-label={`Open client ${row[1] ?? row[0]}`}
+                >
+                  {/* Client Name */}
+                  <td className={styles.tableCell}>{row[1]}</td>
+                  {/* Status */}
+                  <td
+                    className={`${styles.tableCell} ${styles.statusCell} ${
+                      styles[row[2].toLowerCase()]
+                    }`}
                   >
-                    View details
-                  </button>
-                </td>
-              </tr>
-            ))
-        )}
-      </tbody>
-    </table>
+                    <span>{row[2]}</span>
+                  </td>
+                  {/* Loyalty */}
+                  <td className={styles.tableCell}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0",
+                      }}
+                    >
+                      <div style={{ display: "flex", gap: "1px" }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span key={star}>
+                            {Number(row[3]) >= star ? (
+                              <FaStar
+                                style={{ color: "#FFD700", fontSize: "12px" }}
+                              />
+                            ) : (
+                              <FaRegStar
+                                style={{ color: "#FFD700", fontSize: "12px" }}
+                              />
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: "1px" }}>
+                        {[6, 7, 8, 9, 10].map((star) => (
+                          <span key={star}>
+                            {Number(row[3]) >= star ? (
+                              <FaStar
+                                style={{ color: "#FFD700", fontSize: "12px" }}
+                              />
+                            ) : (
+                              <FaRegStar
+                                style={{ color: "#FFD700", fontSize: "12px" }}
+                              />
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </td>
+                  {/* Phone */}
+                  <td className={styles.tableCell}>{row[4]}</td>
+                  {/* Email */}
+                  <td className={styles.tableCell}>{row[5]}</td>
+                  {/* Last Filed */}
+                  <td className={styles.tableCell}>{row[6]}</td>
+                  {/* Tax Year */}
+                  <td className={styles.tableCell}>{row[7]}</td>
+                  {/* Spouse */}
+                  <td className={styles.tableCell}>{row[8]}</td>
+                  {/* Action Button */}
+                  <td className={styles.tableCell}>
+                    <button
+                      type="button"
+                      className={styles.viewBtn}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToClient(row[0]);
+                      }}
+                      aria-label={`View details for ${row[1] ?? row[0]}`}
+                    >
+                      View details
+                    </button>
+                  </td>
+                </tr>
+              ))
+          )}
+        </tbody>
+      </table>
+
+      {renderPaginationControls()}
+    </div>
   );
 };
 

@@ -62,3 +62,80 @@
 tbody tr:hover {
   background-color: #fafafa;
 }
+
+/* Wrapper for table and pagination */
+.tableWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pagination Container */
+.paginationContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.paginationInfo {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.paginationControls {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.paginationButton {
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d0d0d0;
+  background-color: white;
+  color: #333;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationActive {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.paginationActive:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.paginationEllipsis {
+  padding: 0 0.5rem;
+  color: #666;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+  padding: 2rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.error {
+  color: #d32f2f;
+}

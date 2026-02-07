@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import styles from "./Home.module.css";
 import PersonalTable from "../features/personal/components/PersonalTable";
 import Dashboard from "../features/dashboard/Dashboard";
@@ -6,7 +6,6 @@ import Dashboard from "../features/dashboard/Dashboard";
 import { IoSearchSharp } from "react-icons/io5";
 import { IoMdAdd } from "react-icons/io";
 import { BusinessTable } from "../features/business";
-
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 interface Counts {
@@ -17,8 +16,9 @@ interface Counts {
 
 const Home = () => {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"personal" | "business">(
-    "personal"
+    "personal",
   );
   const [counts, setCounts] = useState<Counts | null>(null);
 
@@ -35,6 +35,29 @@ const Home = () => {
       .catch(() => {});
   }, []);
 
+  // Debounce search: Only update debouncedSearch 500ms after user stops typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+
+    // Cancel the timeout if search changes (user is still typing)
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
+  // Handle Enter key press for immediate search
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        // Immediate search on Enter
+        setDebouncedSearch(search);
+      }
+    },
+    [search],
+  );
+
   const personal = counts?.personalClients ?? 0;
   const business = counts?.businessClients ?? 0;
 
@@ -46,10 +69,11 @@ const Home = () => {
             <input
               type="text"
               title="search"
-              placeholder="Search by Name, Business #, or SIN…"
+              placeholder="Search by Name, Business #, or SIN... (Press Enter or wait)"
               className={styles.searchInput}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
             />
             <IoSearchSharp className={styles.searchIcon} />
           </div>
@@ -93,8 +117,20 @@ const Home = () => {
             </div>
           </div>
           <div className={styles.tableContainer}>
-            {activeTab == "personal" && <PersonalTable search={search} />}
-            {activeTab == "business" && <BusinessTable search={search} />}
+            {activeTab == "personal" && (
+              <PersonalTable
+                search={debouncedSearch}
+                enablePagination={true}
+                itemsPerPage={50}
+              />
+            )}
+            {activeTab == "business" && (
+              <BusinessTable
+                search={debouncedSearch}
+                enablePagination={true}
+                itemsPerPage={50}
+              />
+            )}
           </div>
         </div>
       </div>
