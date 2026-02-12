@@ -83,6 +83,11 @@ function formatMonthDayForInput(date?: string | null) {
   ).padStart(2, "0")}`;
 }
 
+function normalizeJurisdiction(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().toLowerCase();
+}
+
 export default function BusinessPatchModal({
   visible,
   onClose,
@@ -124,7 +129,9 @@ export default function BusinessPatchModal({
       referredBy: business.referred_by ?? "",
       contactName: business.contact_name ?? "",
       incorporationDate: formatDateForInput(business.incorporation_date),
-      incorporationJurisdiction: business.incorporation_jurisdiction ?? "",
+      incorporationJurisdiction: normalizeJurisdiction(
+        business.incorporation_jurisdiction,
+      ),
       fiscalYearEnd: formatMonthDayForInput(business.fiscal_year_end),
       ontarioCorpNumber: business.ontario_corp_number ?? "",
 
@@ -216,7 +223,12 @@ export default function BusinessPatchModal({
 
     for (const key of Object.keys(businessMap)) {
       let newVal = (data as any)[key] || null;
-      const oldVal = business[businessMap[key]] ?? null;
+      let oldVal = business[businessMap[key]] ?? null;
+
+      if (key === "incorporationJurisdiction") {
+        newVal = newVal ? normalizeJurisdiction(newVal) : null;
+        oldVal = oldVal ? normalizeJurisdiction(oldVal) : null;
+      }
 
       // Special handling for fiscalYearEnd: convert MM-DD to full date
       if (key === "fiscalYearEnd" && newVal) {
@@ -473,6 +485,11 @@ export default function BusinessPatchModal({
                     <option value="federal">Federal</option>
                     <option value="provincial">Provincial</option>
                   </select>
+                  {errors.incorporationJurisdiction && (
+                    <span className={styles.errorText}>
+                      {errors.incorporationJurisdiction.message}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -481,10 +498,23 @@ export default function BusinessPatchModal({
                   <label>Fiscal Year End (MM-DD)</label>
                   <input
                     type="text"
-                    {...register("fiscalYearEnd")}
+                    {...register("fiscalYearEnd", {
+                      validate: (value) => {
+                        if (!value) return true;
+                        return (
+                          normalizeMonthDayToDate(value) !== null ||
+                          "Fiscal year end must be a valid MM-DD date"
+                        );
+                      },
+                    })}
                     placeholder="MM-DD (e.g., 12-31)"
                     maxLength={5}
                   />
+                  {errors.fiscalYearEnd && (
+                    <span className={styles.errorText}>
+                      {errors.fiscalYearEnd.message}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.formField}>
                   <label htmlFor="loyalty">Loyalty (0-10)</label>
