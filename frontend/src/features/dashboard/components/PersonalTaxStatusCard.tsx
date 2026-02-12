@@ -52,8 +52,8 @@ const PersonalTaxStatusCard = () => {
   const renderBlock = (
     label: string,
     count: number,
-    type: "paper" | "progress" | "review" | "filed",
-    apiStatusKey: string
+    type: "paper" | "inprogress" | "review" | "filed",
+    apiStatusKey: string,
   ) => (
     <div
       className={`${styles.statusBlock} ${styles[type]}`}
@@ -78,8 +78,8 @@ const PersonalTaxStatusCard = () => {
             {renderBlock(
               "InProgress",
               counts?.progressPC ?? 0,
-              "progress",
-              "InProgress"
+              "inprogress",
+              "InProgress",
             )}
 
             {renderBlock("Filed", counts?.filedOnPC ?? 0, "filed", "FiledOn")}

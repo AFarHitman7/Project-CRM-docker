@@ -34,29 +34,30 @@ exports.getStatusCounts = async (req, res) => {
 
     // Get current year
     const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1];
 
     const sql = `
       SELECT
         /* Personal */
-        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'InProgress' AND tax_year = $1)     AS progress_personal_clients,
-        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'ReadyForReview' AND tax_year = $1) AS review_personal_clients,
-        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'PaperReceived' AND tax_year = $1) AS paper_received_personal_clients,
-        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'FiledOn' AND tax_year = $1)        AS filed_personal_clients,
+        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'InProgress' AND tax_year = ANY($1))     AS progress_personal_clients,
+        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'ReadyForReview' AND tax_year = ANY($1)) AS review_personal_clients,
+        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'PaperReceived' AND tax_year = ANY($1)) AS paper_received_personal_clients,
+        (SELECT COUNT(*) FROM tax_records WHERE tax_status = 'FiledOn' AND tax_year = ANY($1))        AS filed_personal_clients,
 
         /* Business - HST */
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'HST' AND tax_year = $1) AS progress_business_hst,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'HST' AND tax_year = $1) AS review_business_hst,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'HST' AND tax_year = $1) AS paper_received_business_hst,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'HST' AND tax_year = $1) AS filed_business_hst,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'HST' AND tax_year = ANY($1)) AS progress_business_hst,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'HST' AND tax_year = ANY($1)) AS review_business_hst,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'HST' AND tax_year = ANY($1)) AS paper_received_business_hst,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'HST' AND tax_year = ANY($1)) AS filed_business_hst,
 
         /* Business - Corporation */
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'CORPORATION' AND tax_year = $1) AS progress_business_corp,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'CORPORATION' AND tax_year = $1) AS review_business_corp,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'CORPORATION' AND tax_year = $1) AS paper_received_business_corp,
-        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'CORPORATION' AND tax_year = $1) AS filed_business_corp
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'InProgress'     AND tax_type = 'CORPORATION' AND tax_year = ANY($1)) AS progress_business_corp,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'ReadyForReview' AND tax_type = 'CORPORATION' AND tax_year = ANY($1)) AS review_business_corp,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'PaperReceived' AND tax_type = 'CORPORATION' AND tax_year = ANY($1)) AS paper_received_business_corp,
+        (SELECT COUNT(*) FROM business_tax_records WHERE status = 'FiledOn'        AND tax_type = 'CORPORATION' AND tax_year = ANY($1)) AS filed_business_corp
     `;
 
-    const { rows } = await pool.query(sql, [currentYear]);
+    const { rows } = await pool.query(sql, [years]);
     const r = rows[0];
 
     return res.json({
@@ -96,6 +97,7 @@ exports.listBusinessClientsByStatus = async (req, res) => {
 
     // Get current year
     const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1];
 
     const params = [];
     const where = [];
@@ -103,7 +105,7 @@ exports.listBusinessClientsByStatus = async (req, res) => {
     // 1. Base Params
     params.push(status); // $1
     params.push(taxType); // $2
-    params.push(currentYear); // $3
+    params.push(years); // $3
 
     // 2. Search Param
     if (search) {
@@ -132,7 +134,7 @@ exports.listBusinessClientsByStatus = async (req, res) => {
       WHERE 
         tr.status = $1 
         AND tr.tax_type = $2
-        AND tr.tax_year = $3
+        AND tr.tax_year = ANY($3)
         ${whereSql}
       ORDER BY bc.business_name ASC
       LIMIT $${dataParams.length - 1} 
@@ -150,7 +152,7 @@ exports.listBusinessClientsByStatus = async (req, res) => {
       WHERE 
         tr.status = $1 
         AND tr.tax_type = $2
-        AND tr.tax_year = $3
+        AND tr.tax_year = ANY($3)
         ${whereSql}
     `;
 
@@ -185,19 +187,20 @@ exports.listPersonalClientsByStatus = async (req, res) => {
 
     // Get current year
     const currentYear = new Date().getFullYear();
+    const years = [currentYear, currentYear - 1];
 
     const params = [];
     const where = [];
 
     // 1. Base Params
     params.push(status); // $1
-    params.push(currentYear); // $2
+    params.push(years); // $2
 
     // 2. Search Param (Search First Name or Last Name)
     if (search) {
       params.push(`%${search}%`); // $3
       where.push(
-        `(c.first_name ILIKE $${params.length} OR c.last_name ILIKE $${params.length})`
+        `(c.first_name ILIKE $${params.length} OR c.last_name ILIKE $${params.length})`,
       );
     }
 
@@ -221,7 +224,7 @@ exports.listPersonalClientsByStatus = async (req, res) => {
         ON c.id = tr.client_id 
       WHERE 
         tr.tax_status = $1
-        AND tr.tax_year = $2
+        AND tr.tax_year = ANY($2)
         ${whereSql}
       ORDER BY c.first_name ASC, c.last_name ASC
       LIMIT $${dataParams.length - 1} 
@@ -238,7 +241,7 @@ exports.listPersonalClientsByStatus = async (req, res) => {
         ON c.id = tr.client_id 
       WHERE 
         tr.tax_status = $1
-        AND tr.tax_year = $2
+        AND tr.tax_year = ANY($2)
         ${whereSql}
     `;
 
@@ -246,7 +249,7 @@ exports.listPersonalClientsByStatus = async (req, res) => {
 
     // 6. Response
     const clientList = dataRes.rows.map(
-      (r) => `${r.first_name} ${r.last_name}`
+      (r) => `${r.first_name} ${r.last_name}`,
     );
 
     res.json({
@@ -295,5 +298,64 @@ exports.getBirthday = async (req, res) => {
       error: "server_error",
       details: err.message,
     });
+  }
+};
+
+exports.getUpcomingAnnualRenewals = async (req, res) => {
+  const conn = await pool.connect();
+
+  try {
+    const { rows } = await conn.query(
+      `
+      WITH renewal_dates AS (
+        SELECT
+          btp.id,
+          btp.business_id,
+          bc.business_name,
+          btp.start_date,
+
+          -- next occurrence of renewal (ignoring original year)
+          CASE
+            WHEN make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            ) >= CURRENT_DATE
+            THEN make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            )
+            ELSE make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int + 1,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            )
+          END AS next_renewal_date
+
+        FROM business_tax_profiles btp
+        JOIN business_clients bc
+          ON bc.id = btp.business_id
+        WHERE btp.tax_type = 'ANNUAL_RENEWAL'
+          AND btp.start_date IS NOT NULL
+          AND btp.registeredstatus = true
+      )
+
+      SELECT *
+      FROM renewal_dates
+      WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '21 days'
+      ORDER BY next_renewal_date ASC
+      `,
+    );
+
+    return res.status(200).json({
+      count: rows.length,
+      data: rows,
+    });
+  } catch (err) {
+    console.error("getUpcomingAnnualRenewals:", err);
+    return res.status(500).json({ error: "server_error" });
+  } finally {
+    conn.release();
   }
 };
