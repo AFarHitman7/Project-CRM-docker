@@ -698,7 +698,11 @@ async function patchBusiness(req, res) {
     for (const [k, col] of Object.entries(businessMap)) {
       if (payload[k] !== undefined) {
         sets.push(`${col} = $${vals.length + 1}`);
-        vals.push(payload[k] ?? null);
+        if (k === "incorporationJurisdiction" && payload[k] !== null) {
+          vals.push(String(payload[k]).trim().toLowerCase());
+        } else {
+          vals.push(payload[k] ?? null);
+        }
       }
     }
 
