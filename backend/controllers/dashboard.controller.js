@@ -343,7 +343,7 @@ exports.getUpcomingAnnualRenewals = async (req, res) => {
 
       SELECT *
       FROM renewal_dates
-      WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '21 days'
+      WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '30 days'
       ORDER BY next_renewal_date ASC
       `,
     );
