@@ -82,6 +82,8 @@
   font-weight: 500;
   cursor: pointer;
   padding: 0;
+  border-radius: 5px;
+  padding: 0.5rem;
 }
 
 .download {
@@ -90,6 +92,11 @@
 
 .delete {
   color: #c62828;
+}
+
+.download:hover,
+.delete:hover {
+  background-color: #f0f0f0;
 }
 
 .download:disabled,
