@@ -68,14 +68,35 @@
   text-overflow: ellipsis;
 }
 
-.download {
-  color: #eee;
-  text-decoration: none;
-  font-weight: 500;
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
-.download:hover {
+.download,
+.delete {
+  border: none;
+  background: transparent;
   text-decoration: underline;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.download {
+  color: #1a4fd8;
+}
+
+.delete {
+  color: #c62828;
+}
+
+.download:disabled,
+.delete:disabled {
+  color: #9a9a9a;
+  cursor: not-allowed;
+  text-decoration: none;
 }
 
 .empty {
