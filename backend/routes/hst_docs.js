@@ -56,7 +56,7 @@ router.post("/:taxRecordId", upload.single("file"), async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/file/:docId", async (req, res) => {
+router.delete("/:docId", async (req, res) => {
   const docId = req.params.docId.trim();
 
   if (!docId) return res.status(400).json({ error: "invalid_doc_id" });
