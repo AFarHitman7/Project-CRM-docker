@@ -30,6 +30,7 @@ export default function FileViewModal({
 }: Props) {
   const [files, setFiles] = useState<HstDoc[]>(taxRecord.documents ?? []);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // keep modal in sync if parent refreshes
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function FileViewModal({
 
     if (!res.ok) {
       alert("Upload failed");
+      setUploading(false);
       return;
     }
 
@@ -87,6 +89,32 @@ export default function FileViewModal({
     window.URL.revokeObjectURL(url);
   }
 
+  async function deleteFile(id: string) {
+    const confirmed = window.confirm(
+      "Delete this document? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(id);
+
+    const res = await fetch(`${API_URL}/api/hst-docs/file/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    setDeletingId(null);
+
+    if (!res.ok) {
+      alert("Failed to delete file");
+      return;
+    }
+
+    await onRefresh();
+  }
+
   /* ================= RENDER ================= */
 
   return (
@@ -105,7 +133,7 @@ export default function FileViewModal({
               <th>File</th>
               <th>Uploaded</th>
               <th>By</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -122,13 +150,22 @@ export default function FileViewModal({
                 <td className={styles.filename}>{f.filename}</td>
                 <td>{new Date(f.uploaded_at).toLocaleDateString()}</td>
                 <td>{f.uploaded_by}</td>
-                <td>
+                <td className={styles.actions}>
                   <button
                     type="button"
                     className={styles.download}
                     onClick={() => downloadFile(f.id, f.filename)}
+                    disabled={deletingId === f.id}
                   >
                     Download
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.delete}
+                    onClick={() => deleteFile(f.id)}
+                    disabled={deletingId === f.id}
+                  >
+                    {deletingId === f.id ? "Deleting..." : "Delete"}
                   </button>
                 </td>
               </tr>
