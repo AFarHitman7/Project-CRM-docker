@@ -2,10 +2,11 @@
 const multer = require("multer");
 const path = require("path");
 const { v4: uuid } = require("uuid");
+const { hstDocsUploadDir } = require("../config/storage");
 
 const storage = multer.diskStorage({
   destination: (_, __, cb) => {
-    cb(null, "uploads/hst_docs");
+    cb(null, hstDocsUploadDir);
   },
   filename: (_, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
