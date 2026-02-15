@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const { pool } = require("../database/db");
 const path = require("path");
+const { hstDocsUploadDir } = require("../config/storage");
 
 const router = express.Router();
 
@@ -55,6 +56,40 @@ router.post("/:taxRecordId", upload.single("file"), async (req, res) => {
   res.json({ ok: true });
 });
 
+router.delete("/:docId", async (req, res) => {
+  const docId = req.params.docId.trim();
+
+  if (!docId) return res.status(400).json({ error: "invalid_doc_id" });
+
+  if (!req.user || !["admin", "auditor"].includes(req.user.role)) {
+    return res.sendStatus(403);
+  }
+
+  const { rows } = await pool.query(
+    `
+    DELETE FROM hst_docs
+    WHERE id = $1
+    RETURNING id, object_store_key
+    `,
+    [docId]
+  );
+
+  if (!rows.length) return res.sendStatus(404);
+
+  const filePath = path.resolve(hstDocsUploadDir, rows[0].object_store_key);
+
+  try {
+    await fs.promises.unlink(filePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.error("Failed to delete uploaded file:", error);
+      return res.status(500).json({ error: "file_delete_failed" });
+    }
+  }
+
+  return res.json({ ok: true });
+});
+
 router.get("/file/:docId", async (req, res) => {
   const docId = req.params.docId.trim();
 
@@ -73,11 +108,7 @@ router.get("/file/:docId", async (req, res) => {
   if (!["admin", "auditor"].includes(req.user.role)) {
     return res.sendStatus(403);
   }
-  const filePath = path.resolve(
-    __dirname,
-    "../uploads/hst_docs",
-    rows[0].object_store_key
-  );
+  const filePath = path.resolve(hstDocsUploadDir, rows[0].object_store_key);
 
   res.sendFile(filePath);
 });
