@@ -503,9 +503,9 @@ const BusinessTable: React.FC<BusinessTableProps> = ({
                 {/* Phone */}
                 <td className={styles.tableCell}>{row[5]}</td>
                 {/* Email */}
-                <td className={styles.tableCell}>{row[6]}</td>
+                <td className={styles.tableCell}>{row[6].toLowerCase()}</td>
                 {/* Contact */}
-                <td className={styles.tableCell}>{row[7]}</td>
+                <td className={styles.tableCell}>{toTitleCase(row[7])}</td>
                 {/* Fiscal Year */}
                 <td className={styles.tableCell}>{row[8]}</td>
                 <td className={styles.tableCell}>

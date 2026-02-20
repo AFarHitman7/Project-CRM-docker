@@ -546,7 +546,7 @@ const PersonalTable: React.FC<PersonalTableProps> = ({
                   {/* Phone */}
                   <td className={styles.tableCell}>{row[4]}</td>
                   {/* Email */}
-                  <td className={styles.tableCell}>{row[5]}</td>
+                  <td className={styles.tableCell}>{row[5].toLowerCase()}</td>
                   {/* Last Filed */}
                   <td className={styles.tableCell}>{row[6]}</td>
                   {/* Tax Year */}
