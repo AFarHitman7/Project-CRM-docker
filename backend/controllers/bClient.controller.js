@@ -89,6 +89,7 @@ async function listClients(req, res) {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const whereParamsCount = params.length;
 
     /* ========== DATA QUERY ========== */
     let dataSql = `
@@ -118,7 +119,7 @@ async function listClients(req, res) {
     /* ========== COUNT QUERY ========== */
     const countRes = await pool.query(
       `SELECT COUNT(*) FROM business_clients bc ${whereSql}`,
-      params.slice(0, where.length),
+      params.slice(0, whereParamsCount),
     );
 
     const total = Number(countRes.rows[0].count);
