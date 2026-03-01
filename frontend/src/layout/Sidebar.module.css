@@ -24,7 +24,7 @@
 
 .logo {
   height: 80px;
-  width: 70%;
+  width: 85%;
   border-radius: 2rem;
   color: #fff;
   display: flex;
@@ -58,7 +58,9 @@
   margin-bottom: 0.2rem;
   border-radius: 0.5rem;
   cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 .nav ul li:hover {
@@ -95,7 +97,9 @@
   border-radius: 0.5rem;
   padding: 0.7rem 1rem;
   cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 .footer div:hover {
