@@ -59,16 +59,37 @@ async function listClients(req, res) {
     const params = [];
     const where = [];
 
-    /* ========== TRUE WORD-START SEARCH ========== */
+    /* ========== SEARCH ========== */
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const wordStartRegex = `\\m${escaped}`;
+      const hasDigits = /\d/.test(search);
+      const digitsOnly = search.replace(/\D/g, "");
 
-      params.push(wordStartRegex);
-      where.push(`bc.business_name ~* $${params.length}`);
+      if (hasDigits && digitsOnly.length >= 3) {
+        params.push(
+          wordStartRegex,
+          `%${digitsOnly}%`,
+          wordStartRegex,
+          `%${digitsOnly}%`,
+        );
+        where.push(`(
+          bc.business_name ~* $${params.length - 3} OR
+          REGEXP_REPLACE(COALESCE(bc.business_number, ''), '[^0-9]', '', 'g') ILIKE $${params.length - 2} OR
+          bc.contact_name ~* $${params.length - 1} OR
+          REGEXP_REPLACE(COALESCE(bc.phone_cell, ''), '[^0-9]', '', 'g') ILIKE $${params.length}
+        )`);
+      } else {
+        params.push(wordStartRegex, wordStartRegex);
+        where.push(`(
+          bc.business_name ~* $${params.length - 1} OR
+          bc.contact_name ~* $${params.length}
+        )`);
+      }
     }
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const whereParamsCount = params.length;
 
     /* ========== DATA QUERY ========== */
     let dataSql = `
@@ -98,7 +119,7 @@ async function listClients(req, res) {
     /* ========== COUNT QUERY ========== */
     const countRes = await pool.query(
       `SELECT COUNT(*) FROM business_clients bc ${whereSql}`,
-      params.slice(0, where.length),
+      params.slice(0, whereParamsCount),
     );
 
     const total = Number(countRes.rows[0].count);

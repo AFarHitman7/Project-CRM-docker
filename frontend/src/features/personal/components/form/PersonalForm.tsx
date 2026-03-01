@@ -25,7 +25,6 @@ export interface ClientForm {
   maritalStatus: string;
   dateOfMarriage?: string;
   addresses: Address[];
-  fax?: string;
   loyalty?: string;
   loyaltySince?: string;
   referredBy?: string;
@@ -117,7 +116,6 @@ export default function PersonalForm() {
           postalCode: "",
         },
       ],
-      fax: "",
       loyalty: "",
       loyaltySince: "",
       referredBy: "",
@@ -536,28 +534,6 @@ export default function PersonalForm() {
           <section className={styles.formSection}>
             <h3>Other Details</h3>
             <div className={styles.formRow}>
-              <div className={styles.formField}>
-                <label htmlFor="fax">Fax</label>
-                <input
-                  id="fax"
-                  {...register("fax", {
-                    validate: (val) => {
-                      if (!val) return true;
-                      const d = sanitizeDigits(val);
-                      if (d.length === 10) return true;
-                      return "Invalid fax number";
-                    },
-                  })}
-                  aria-invalid={!!errors.fax}
-                  placeholder="(416) 555-5678"
-                  inputMode="tel"
-                />
-                {errors.fax && (
-                  <div role="alert" className={styles.errorText}>
-                    {errors.fax.message}
-                  </div>
-                )}
-              </div>
               <div className={styles.formField}>
                 <label htmlFor="loyaltySince">Loyalty Since</label>
                 <input
