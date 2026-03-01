@@ -360,7 +360,6 @@ export default function PersonalDetails() {
               <Field label="Gender" value={toTitleCase(client.gender)} />
               <Field label="Phone" value={client.phone} />
               <Field label="Email" value={client.email} />
-              <Field label="Fax" value={client.fax} />
               <Field
                 label="Status"
                 value={toTitleCase(latestTax?.tax_status)}
@@ -708,7 +707,6 @@ export default function PersonalDetails() {
                 <Field label="Gender" value={spouse.gender} />
                 <Field label="Phone" value={spouse.phone} />
                 <Field label="Email" value={spouse.email} />
-                <Field label="Fax" value={spouse.fax} />
                 <Field label="Status" value={spouseTax?.tax_status} />
                 <Field
                   label="Tax Date"
