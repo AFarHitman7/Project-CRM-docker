@@ -9,7 +9,7 @@
   flex-direction: column;
   background-color: #2f3f4c;
   color: #ffffff;
-  width: 265px;
+  width: 215px;
   padding: 1rem;
   font-family: "Poppins", sans-serif;
 }
@@ -50,7 +50,7 @@
 }
 
 .nav ul li {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -88,7 +88,7 @@
 
 .footer div,
 .footer button {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   display: flex;
   align-items: center;
   gap: 1rem;

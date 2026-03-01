@@ -66,7 +66,7 @@ const Clients = () => {
             <input
               type="text"
               title="search"
-              placeholder="Search by Name, Business #, or SIN…"
+              placeholder="Search by name, business #, contact, phone, or SIN…"
               className={styles.searchInput}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
