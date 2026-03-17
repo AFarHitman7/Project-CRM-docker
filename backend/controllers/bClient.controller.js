@@ -1,5 +1,6 @@
 const { pool } = require("../database/db");
 const { encrypt, sha256, decrypt } = require("../utils/crypto-utils");
+const { syncAnnualRenewals } = require("../cron/syncNotifications");
 
 function nullify(v) {
   if (v === undefined || v === null) return null;
@@ -405,6 +406,10 @@ async function createBusiness(req, res) {
     }
 
     await conn.query("COMMIT");
+
+    // Trigger sync for annual renewals after a new business is created
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+
     return res.status(201).json({ id: businessId });
   } catch (err) {
     await conn.query("ROLLBACK");
@@ -883,6 +888,10 @@ async function patchBusiness(req, res) {
     }
 
     await conn.query("COMMIT");
+
+    // Trigger sync for annual renewals after a business is updated
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+
     res.json({ success: true });
   } catch (err) {
     await conn.query("ROLLBACK");
@@ -1267,6 +1276,11 @@ async function createBusinessBulk(req, res) {
     }
   }
 
+  if (created > 0) {
+    // Trigger sync for annual renewals after bulk business creation
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+  }
+
   return res.json({ created, failed, results });
 }
 
@@ -1419,6 +1433,16 @@ async function createTaxRecord(req, res) {
         [taxRecord.id, note.trim(), req.user.id],
       );
     }
+    
+    // Auto-complete pending notifications if this is an ANNUAL_RENEWAL
+    if (tax_type === 'ANNUAL_RENEWAL') {
+      await conn.query(
+        `UPDATE notifications SET status = 'completed' 
+         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
+        [businessId]
+      );
+    }
+
 
     await conn.query("COMMIT");
     return res.status(201).json(taxRecord);

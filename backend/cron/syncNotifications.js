@@ -1,0 +1,86 @@
+const cron = require("node-cron");
+const { pool } = require("../database/db");
+
+async function syncAnnualRenewals() {
+  const conn = await pool.connect();
+  try {
+    await conn.query("BEGIN");
+
+    // Get upcoming renewals in the next 30 days
+    const sql = `
+      WITH renewal_dates AS (
+        SELECT
+          btp.id,
+          btp.business_id,
+          bc.business_name,
+          btp.start_date,
+          CASE
+            WHEN make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            ) >= CURRENT_DATE
+            THEN make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            )
+            ELSE make_date(
+              EXTRACT(YEAR FROM CURRENT_DATE)::int + 1,
+              EXTRACT(MONTH FROM btp.start_date)::int,
+              EXTRACT(DAY FROM btp.start_date)::int
+            )
+          END AS next_renewal_date
+        FROM business_tax_profiles btp
+        JOIN business_clients bc ON bc.id = btp.business_id
+        WHERE btp.tax_type = 'ANNUAL_RENEWAL'
+          AND btp.start_date IS NOT NULL
+          AND btp.registeredstatus = true
+      )
+      SELECT * FROM renewal_dates 
+      WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '30 days'
+    `;
+    const { rows } = await conn.query(sql);
+
+    // Insert into notifications if not exists
+    for (const row of rows) {
+      const { business_id, business_name, next_renewal_date } = row;
+      
+      // Check if pending notification already exists for this exact due date
+      const checkSql = `
+        SELECT id FROM notifications 
+        WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' 
+        AND due_date = $2
+      `;
+      const checkResult = await conn.query(checkSql, [business_id, next_renewal_date]);
+      
+      if (checkResult.rows.length === 0) {
+        // Insert new notification
+        const msg = `Annual Renewal for ${business_name} is due on ${new Date(next_renewal_date).toLocaleDateString()}`;
+        const insertSql = `
+          INSERT INTO notifications (business_id, type, message, due_date, status, viewed)
+          VALUES ($1, 'ANNUAL_RENEWAL', $2, $3, 'pending', false)
+        `;
+        await conn.query(insertSql, [business_id, msg, next_renewal_date]);
+      }
+    }
+
+    await conn.query("COMMIT");
+    console.log("cron: syncAnnualRenewals completed.");
+  } catch (err) {
+    await conn.query("ROLLBACK");
+    console.error("cron: syncAnnualRenewals failed:", err);
+  } finally {
+    conn.release();
+  }
+}
+
+function startCronJobs() {
+  // Sync daily at midnight
+  cron.schedule("0 0 * * *", () => {
+    syncAnnualRenewals();
+  });
+  console.log("Cron jobs started.");
+}
+
+module.exports = { startCronJobs, syncAnnualRenewals };

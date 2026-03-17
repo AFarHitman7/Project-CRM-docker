@@ -29,7 +29,7 @@ const Navbar = () => {
       return;
     }
 
-    fetch(`${API_URL}/api/dashboard/annual`, {
+    fetch(`${API_URL}/api/notifications`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -53,6 +53,29 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const unreadCount = notifications.filter((n: any) => !n.viewed && n.status === 'pending').length;
+  const pendingNotifications = notifications.filter((n: any) => n.status === 'pending');
+
+  const toggleDropdown = async () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen && unreadCount > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        await fetch(`${API_URL}/api/notifications/viewed`, {
+          method: 'PATCH',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setNotifications((prev: any[]) => prev.map((n: any) => ({...n, viewed: true})));
+      } catch (err) {
+        console.error("Failed to mark viewed");
+      }
+    }
+  };
+
   const handleRedirect = (businessId: string) => {
     setOpen(false);
     navigate(`/business/${businessId}`);
@@ -65,22 +88,22 @@ const Navbar = () => {
       <div className={styles.actions}>
         <div
           className={styles.notif}
-          onClick={() => setOpen((prev) => !prev)}
+          onClick={toggleDropdown}
           ref={dropdownRef}
         >
           <IoNotificationsOutline size="1.6rem" />
 
-          {notifications.length > 0 && (
-            <span className={styles.badge}>{notifications.length}</span>
+          {unreadCount > 0 && (
+            <span className={styles.badge}>{unreadCount}</span>
           )}
 
           {open && (
             <div className={styles.dropdown}>
-              {notifications.length === 0 && (
+              {pendingNotifications.length === 0 && (
                 <p className={styles.empty}>No upcoming renewals</p>
               )}
 
-              {notifications.map((item) => (
+              {pendingNotifications.map((item: any) => (
                 <div
                   key={item.id}
                   className={styles.notificationItem}
@@ -88,10 +111,7 @@ const Navbar = () => {
                 >
                   <p className={styles.title}>{item.business_name}</p>
                   <p className={styles.sub}>
-                    Renewal due on{" "}
-                    {item.next_renewal_date
-                      ? new Date(item.next_renewal_date).toLocaleDateString()
-                      : "—"}
+                    {item.message || `Renewal due on ${item.due_date ? new Date(item.due_date).toLocaleDateString() : "—"}`}
                   </p>
                 </div>
               ))}
