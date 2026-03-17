@@ -1,6 +1,1 @@
-Create index in db
-
-
-CREATE INDEX idx_tax_profiles_annual
-ON business_tax_profiles (tax_type, start_date)
-WHERE tax_type = 'ANNUAL_RENEWAL';
+this is notification branch
