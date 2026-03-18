@@ -402,4 +402,12 @@ CREATE OR REPLACE TRIGGER trg_notifications_updated_at
 BEFORE UPDATE ON public.notifications
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+-- Per-user notification view tracking
+CREATE TABLE IF NOT EXISTS public.notification_views (
+    notification_id uuid NOT NULL REFERENCES public.notifications(id) ON DELETE CASCADE,
+    user_id         uuid NOT NULL REFERENCES public.app_users(id)    ON DELETE CASCADE,
+    viewed_at       timestamptz DEFAULT now(),
+    PRIMARY KEY (notification_id, user_id)
+);
+
 COMMIT;
