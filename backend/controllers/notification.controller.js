@@ -7,7 +7,8 @@ exports.getNotifications = async (req, res) => {
       SELECT n.*, bc.business_name 
       FROM notifications n
       JOIN business_clients bc ON n.business_id = bc.id
-      ORDER BY n.due_date ASC, n.created_at DESC
+      WHERE n.status = 'pending'
+      ORDER BY n.due_date ASC NULLS LAST, n.created_at DESC
     `);
     
     return res.status(200).json({ count: rows.length, data: rows });
@@ -28,7 +29,7 @@ exports.syncNotifications = async (req, res) => {
 
 exports.markViewed = async (req, res) => {
   try {
-    await pool.query(`UPDATE notifications SET viewed = true WHERE viewed = false`);
+    await pool.query(`UPDATE notifications SET viewed = true WHERE viewed = false AND status = 'pending'`);
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("markViewed:", err);

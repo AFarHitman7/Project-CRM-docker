@@ -56,7 +56,7 @@ async function syncAnnualRenewals() {
       
       if (checkResult.rows.length === 0) {
         // Insert new notification
-        const msg = `Annual Renewal for ${business_name} is due on ${new Date(next_renewal_date).toLocaleDateString()}`;
+        const msg = `Annual Renewal for ${business_name} is due on ${new Date(next_renewal_date).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}`;
         const insertSql = `
           INSERT INTO notifications (business_id, type, message, due_date, status, viewed)
           VALUES ($1, 'ANNUAL_RENEWAL', $2, $3, 'pending', false)
