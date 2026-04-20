@@ -101,27 +101,30 @@ async function listClients(req, res) {
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const wordRegex = `(^|\\s)${escaped}`;
+      const fullNameRegex = escaped; // match anywhere in the concatenated full name
 
       const hasDigits = /\d/.test(search);
       const digitsOnly = search.replace(/\D/g, "");
 
       if (hasDigits && digitsOnly.length >= 3) {
-        params.push(wordRegex, wordRegex, `%${digitsOnly}%`, wordRegex);
+        params.push(wordRegex, wordRegex, `%${digitsOnly}%`, wordRegex, fullNameRegex);
+        whereClauses.push(
+          `(
+            c.first_name ~* $${params.length - 4} OR
+            c.last_name  ~* $${params.length - 3} OR
+            REGEXP_REPLACE(c.phone, '[^0-9]', '', 'g') ILIKE $${params.length - 2} OR
+            c.email ~* $${params.length - 1} OR
+            (c.first_name || ' ' || c.last_name) ~* $${params.length}
+          )`,
+        );
+      } else {
+        params.push(wordRegex, wordRegex, wordRegex, fullNameRegex);
         whereClauses.push(
           `(
             c.first_name ~* $${params.length - 3} OR
             c.last_name  ~* $${params.length - 2} OR
-            REGEXP_REPLACE(c.phone, '[^0-9]', '', 'g') ILIKE $${params.length - 1} OR
-            c.email ~* $${params.length}
-          )`,
-        );
-      } else {
-        params.push(wordRegex, wordRegex, wordRegex);
-        whereClauses.push(
-          `(
-            c.first_name ~* $${params.length - 2} OR
-            c.last_name  ~* $${params.length - 1} OR
-            c.email      ~* $${params.length}
+            c.email      ~* $${params.length - 1} OR
+            (c.first_name || ' ' || c.last_name) ~* $${params.length}
           )`,
         );
       }

@@ -63,6 +63,7 @@ async function listClients(req, res) {
     if (search) {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const wordStartRegex = `\\m${escaped}`;
+      const likeSearch = `%${search}%`;
       const hasDigits = /\d/.test(search);
       const digitsOnly = search.replace(/\D/g, "");
 
@@ -72,18 +73,21 @@ async function listClients(req, res) {
           `%${digitsOnly}%`,
           wordStartRegex,
           `%${digitsOnly}%`,
+          likeSearch,
         );
         where.push(`(
-          bc.business_name ~* $${params.length - 3} OR
-          REGEXP_REPLACE(COALESCE(bc.business_number, ''), '[^0-9]', '', 'g') ILIKE $${params.length - 2} OR
-          bc.contact_name ~* $${params.length - 1} OR
-          REGEXP_REPLACE(COALESCE(bc.phone_cell, ''), '[^0-9]', '', 'g') ILIKE $${params.length}
+          bc.business_name ~* $${params.length - 4} OR
+          REGEXP_REPLACE(COALESCE(bc.business_number, ''), '[^0-9]', '', 'g') ILIKE $${params.length - 3} OR
+          bc.contact_name ~* $${params.length - 2} OR
+          REGEXP_REPLACE(COALESCE(bc.phone_cell, ''), '[^0-9]', '', 'g') ILIKE $${params.length - 1} OR
+          bc.contact_name ILIKE $${params.length}
         )`);
       } else {
-        params.push(wordStartRegex, wordStartRegex);
+        params.push(wordStartRegex, wordStartRegex, likeSearch);
         where.push(`(
-          bc.business_name ~* $${params.length - 1} OR
-          bc.contact_name ~* $${params.length}
+          bc.business_name ~* $${params.length - 2} OR
+          bc.contact_name ~* $${params.length - 1} OR
+          bc.contact_name ILIKE $${params.length}
         )`);
       }
     }
