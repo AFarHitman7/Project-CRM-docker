@@ -1,5 +1,6 @@
 const { pool } = require("../database/db");
 const { encrypt, sha256, decrypt } = require("../utils/crypto-utils");
+const { syncAnnualRenewals } = require("../cron/syncNotifications");
 
 function nullify(v) {
   if (v === undefined || v === null) return null;
@@ -409,6 +410,10 @@ async function createBusiness(req, res) {
     }
 
     await conn.query("COMMIT");
+
+    // Trigger sync for annual renewals after a new business is created
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+
     return res.status(201).json({ id: businessId });
   } catch (err) {
     await conn.query("ROLLBACK");
@@ -887,6 +892,10 @@ async function patchBusiness(req, res) {
     }
 
     await conn.query("COMMIT");
+
+    // Trigger sync for annual renewals after a business is updated
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+
     res.json({ success: true });
   } catch (err) {
     await conn.query("ROLLBACK");
@@ -1271,6 +1280,11 @@ async function createBusinessBulk(req, res) {
     }
   }
 
+  if (created > 0) {
+    // Trigger sync for annual renewals after bulk business creation
+    syncAnnualRenewals().catch((err) => console.error("Sync error:", err));
+  }
+
   return res.json({ created, failed, results });
 }
 
@@ -1423,6 +1437,16 @@ async function createTaxRecord(req, res) {
         [taxRecord.id, note.trim(), req.user.id],
       );
     }
+    
+    // Auto-complete pending notifications if this is an ANNUAL_RENEWAL
+    if (tax_type === 'ANNUAL_RENEWAL') {
+      await conn.query(
+        `UPDATE notifications SET status = 'completed' 
+         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
+        [businessId]
+      );
+    }
+
 
     await conn.query("COMMIT");
     return res.status(201).json(taxRecord);
@@ -1502,6 +1526,19 @@ async function patchTaxRecord(req, res) {
 
     await conn.query(sql, [...vals, taxRecordId]);
 
+    // Auto-complete pending notifications if this is an ANNUAL_RENEWAL record
+    const updatedRecord = await conn.query(
+      `SELECT tax_type, business_id FROM business_tax_records WHERE id = $1`,
+      [taxRecordId]
+    );
+    if (updatedRecord.rows.length && updatedRecord.rows[0].tax_type === 'ANNUAL_RENEWAL') {
+      await conn.query(
+        `UPDATE notifications SET status = 'completed'
+         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
+        [updatedRecord.rows[0].business_id]
+      );
+    }
+
     await conn.query("COMMIT");
 
     const { rows } = await pool.query(
@@ -1526,13 +1563,23 @@ async function deleteTaxRecord(req, res) {
       `
       DELETE FROM business_tax_records
       WHERE id = $1 AND business_id = $2
-      RETURNING id
+      RETURNING id, tax_type
       `,
       [taxRecordId, businessId],
     );
 
     if (!result.rowCount) {
       return res.status(404).json({ error: "tax_record_not_found" });
+    }
+
+    // If an annual renewal was deleted, revert its completed notification back to pending
+    // so the user is reminded to re-file
+    if (result.rows[0].tax_type === 'ANNUAL_RENEWAL') {
+      await pool.query(
+        `UPDATE notifications SET status = 'pending', viewed = false
+         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'completed'`,
+        [businessId]
+      );
     }
 
     res.json({ success: true });

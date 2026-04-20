@@ -351,7 +351,7 @@ export default function InsertBusinessResourceModal({
             : "",
       amount: "",
       confirmationNumber: "",
-      status: "InProgress",
+      status: activeTaxTab === "ANNUAL_RENEWAL" ? "FiledOn" : "InProgress",
       taxDate: "",
       preparedBy: "",
       fromDate: "",
@@ -411,7 +411,10 @@ export default function InsertBusinessResourceModal({
       return;
     }
 
-    if (form.status === "FiledOn" || form.status === "ReadyForReview") {
+    if (
+      activeTaxTab !== "ANNUAL_RENEWAL" &&
+      (form.status === "FiledOn" || form.status === "ReadyForReview")
+    ) {
       if (!form.amount) {
         setError("Amount is required for this status");
         return;
@@ -462,8 +465,8 @@ export default function InsertBusinessResourceModal({
 
       console.log("Created tax record:", data.id);
 
-      // If status is FiledOn, show upload page
-      if (form.status === "FiledOn") {
+      // If status is FiledOn and not ANNUAL_RENEWAL, show upload page
+      if (form.status === "FiledOn" && activeTaxTab !== "ANNUAL_RENEWAL") {
         setCreatedTaxRecordId(data.id);
         setTaxRecordCreated(true);
       } else {
@@ -948,20 +951,21 @@ export default function InsertBusinessResourceModal({
                           </div>
                         )}
 
-                      {form.status === "FiledOn" && (
-                        <div className={styles.formField}>
-                          <label>Filing Date *</label>
-                          <input
-                            type="date"
-                            value={form.taxDate}
-                            required
-                            max={new Date().toISOString().split("T")[0]}
-                            onChange={(e) =>
-                              setForm({ ...form, taxDate: e.target.value })
-                            }
-                          />
-                        </div>
-                      )}
+                      {form.status === "FiledOn" &&
+                        activeTaxTab !== "ANNUAL_RENEWAL" && (
+                          <div className={styles.formField}>
+                            <label>Filing Date *</label>
+                            <input
+                              type="date"
+                              value={form.taxDate}
+                              required
+                              max={new Date().toISOString().split("T")[0]}
+                              onChange={(e) =>
+                                setForm({ ...form, taxDate: e.target.value })
+                              }
+                            />
+                          </div>
+                        )}
 
                       <div className={styles.formField}>
                         <label>Prepared By *</label>

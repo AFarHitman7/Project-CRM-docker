@@ -10,6 +10,8 @@ const pClientRoutes = require("./routes/pClient.routes");
 const bClientRoutes = require("./routes/bClient.routes");
 const fileRoutes = require("./routes/hst_docs");
 const dashboardRoutes = require("./routes/dashboard.routes");
+const notificationRoutes = require("./routes/notification.routes");
+const { startCronJobs } = require("./cron/syncNotifications");
 
 const app = express();
 
@@ -32,6 +34,10 @@ app.use("/api/pClient", authenticateToken, pClientRoutes);
 app.use("/api/bClient", authenticateToken, bClientRoutes);
 app.use("/api/hst-docs", authenticateToken, fileRoutes);
 app.use("/api/dashboard", authenticateToken, dashboardRoutes);
+app.use("/api/notifications", authenticateToken, notificationRoutes);
+
+// Start cron jobs
+startCronJobs();
 
 // Serve static files
 app.use(express.static(path.join(__dirname, "public")));
