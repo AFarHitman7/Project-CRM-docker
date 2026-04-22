@@ -239,6 +239,7 @@ export default function PersonalPatchModal({
           className={styles.modalForm}
           onSubmit={handleSubmit(onSubmit)}
           noValidate
+          autoComplete="off"
         >
           <div className={styles.modalBody}>
             <section className={styles.formSection}>

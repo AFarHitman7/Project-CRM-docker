@@ -280,6 +280,7 @@ export default function PersonalForm() {
         className={styles.form}
         onSubmit={handleSubmit(onSubmit)}
         noValidate
+        autoComplete="off"
       >
         {user?.role === "admin" && (
           <button

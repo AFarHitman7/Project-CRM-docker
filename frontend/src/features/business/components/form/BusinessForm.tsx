@@ -287,6 +287,7 @@ export default function BusinessForm() {
         className={styles.form}
         onSubmit={handleSubmit(onSubmit)}
         noValidate
+        autoComplete="off"
       >
         {user?.role === "admin" && (
           <button

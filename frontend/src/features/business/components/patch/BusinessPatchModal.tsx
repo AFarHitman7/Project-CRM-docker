@@ -367,6 +367,7 @@ export default function BusinessPatchModal({
           onSubmit={handleSubmit(onSubmit)}
           className={styles.modalForm}
           noValidate
+          autoComplete="off"
         >
           <div className={styles.modalBody}>
             {/* ================= BUSINESS ================= */}
