@@ -346,7 +346,7 @@ export default function EditTaxModal({
                 </div>
 
                 {/* FILING DATE ONLY SHOWN WHEN STATUS IS FiledOn */}
-                {currentStatus === "FiledOn" && (
+                {currentStatus === "FiledOn" && !isAnnualRenewal && (
                   <div className={styles.formField}>
                     <label>Filing Date *</label>
                     <input

@@ -53,6 +53,27 @@ function formatDateTime(ts?: string) {
   return `${MM}/${DD}/${YYYY} ${HH}:${mm}:${ss}`;
 }
 
+function computeNextRenewalDate(startDate?: string | null): Date | null {
+  if (!startDate) return null;
+  const d = new Date(startDate);
+  if (isNaN(d.getTime())) return null;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const base = new Date(now.getFullYear(), 0, 1);
+  for (let i = 0; i < 366; i++) {
+    const y = base.getFullYear();
+    const dt = new Date(y, d.getMonth(), d.getDate());
+    dt.setHours(0, 0, 0, 0);
+    if (dt >= now) {
+      return dt;
+    }
+    base.setFullYear(y + 1);
+  }
+  return null;
+}
+
 export default function BusinessDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -418,8 +439,9 @@ export default function BusinessDetails() {
                     (p: any) => p.tax_type === "ANNUAL_RENEWAL",
                   );
                   if (!ar || !ar.registeredstatus) return "Not Registered";
-                  if (!ar.start_date) return "Registered";
-                  return formatDate(ar.start_date);
+                  const next = computeNextRenewalDate(ar.start_date);
+                  if (!next) return "Registered";
+                  return formatDate(next.toISOString());
                 })()}
               />
             </Grid>
@@ -548,7 +570,7 @@ export default function BusinessDetails() {
                               value={toTitleCase(tp.frequency)}
                             />
                           )}
-                          {tp.start_date && (
+                          {tp.start_date && tp.tax_type !== "ANNUAL_RENEWAL" && (
                             <Field
                               label="Start Date"
                               value={formatDate(tp.start_date)}
@@ -624,7 +646,9 @@ export default function BusinessDetails() {
 
                                 <th>Status</th>
                                 <th>Amount</th>
-                                <th>Filing Date</th>
+                                {tp.tax_type !== "ANNUAL_RENEWAL" && (
+                                  <th>Filing Date</th>
+                                )}
                                 <th>Confirmation No.</th>
                                 <th>Prepared By</th>
                                 <th>Notes</th>
@@ -698,9 +722,11 @@ export default function BusinessDetails() {
                                         }).format(r.amount)
                                       : "—"}
                                   </td>
-                                  <td>
-                                    {r.tax_date ? formatDate(r.tax_date) : "—"}
-                                  </td>
+                                   {tp.tax_type !== "ANNUAL_RENEWAL" && (
+                                   <td>
+                                     {r.tax_date ? formatDate(r.tax_date) : "—"}
+                                   </td>
+                                   )}
                                   <td>{r.confirmation_number || "—"}</td>
                                   <td>
                                     {r.prepared_by || r.created_by_name || "—"}

@@ -78,6 +78,27 @@ function validateDateNotFuture(date: string): boolean {
   return selected <= today;
 }
 
+function computeNextRenewalDate(startDate?: string | null): Date | null {
+  if (!startDate) return null;
+  const d = new Date(startDate);
+  if (isNaN(d.getTime())) return null;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const base = new Date(now.getFullYear(), 0, 1);
+  for (let i = 0; i < 366; i++) {
+    const y = base.getFullYear();
+    const dt = new Date(y, d.getMonth(), d.getDate());
+    dt.setHours(0, 0, 0, 0);
+    if (dt >= now) {
+      return dt;
+    }
+    base.setFullYear(y + 1);
+  }
+  return null;
+}
+
 export default function InsertBusinessResourceModal({
   visible,
   onClose,
@@ -873,9 +894,14 @@ export default function InsertBusinessResourceModal({
                             <input
                               value={
                                 activeProfile.start_date
-                                  ? new Date(
-                                      activeProfile.start_date,
-                                    ).toLocaleDateString("en-CA")
+                                  ? (() => {
+                                      const next = computeNextRenewalDate(
+                                        activeProfile.start_date,
+                                      );
+                                      return next
+                                        ? next.toLocaleDateString("en-CA")
+                                        : "";
+                                    })()
                                   : ""
                               }
                               disabled
