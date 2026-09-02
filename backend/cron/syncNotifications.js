@@ -37,61 +37,31 @@ async function syncAnnualRenewals() {
           AND btp.start_date IS NOT NULL
           AND btp.registeredstatus = true
       )
-      SELECT
-        *,
-        EXTRACT(YEAR FROM next_renewal_date)::int AS due_year
-      FROM renewal_dates
+      SELECT * FROM renewal_dates 
       WHERE next_renewal_date = CURRENT_DATE
     `;
     const { rows } = await conn.query(sql);
 
-    // Ensure notifications exist and are in sync with filing status for each due date
+    // Insert into notifications if not exists
     for (const row of rows) {
-      const { business_id, business_name, next_renewal_date, due_year } = row;
-
-      const filedResult = await conn.query(
-        `
-        SELECT 1
-        FROM business_tax_records
-        WHERE business_id = $1
-          AND tax_type = 'ANNUAL_RENEWAL'
-          AND (
-            tax_year = $2
-            OR (tax_date IS NOT NULL AND EXTRACT(YEAR FROM tax_date)::int = $2)
-          )
-        LIMIT 1
-        `,
-        [business_id, due_year]
-      );
-      const status = filedResult.rows.length ? "completed" : "pending";
-
-      // Check if a notification already exists for this exact due date
+      const { business_id, business_name, next_renewal_date } = row;
+      
+      // Check if pending notification already exists for this exact due date
       const checkSql = `
-        SELECT id FROM notifications
+        SELECT id FROM notifications 
         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' 
         AND due_date = $2
       `;
       const checkResult = await conn.query(checkSql, [business_id, next_renewal_date]);
-
-      const msg = `Annual Renewal for ${business_name} is due on ${new Date(next_renewal_date).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}`;
-
+      
       if (checkResult.rows.length === 0) {
+        // Insert new notification
+        const msg = `Annual Renewal for ${business_name} is due on ${new Date(next_renewal_date).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}`;
         const insertSql = `
           INSERT INTO notifications (business_id, type, message, due_date, status, viewed)
-          VALUES ($1, 'ANNUAL_RENEWAL', $2, $3, $4, false)
+          VALUES ($1, 'ANNUAL_RENEWAL', $2, $3, 'pending', false)
         `;
-        await conn.query(insertSql, [business_id, msg, next_renewal_date, status]);
-      } else {
-        await conn.query(
-          `
-          UPDATE notifications
-          SET status = $1
-          WHERE business_id = $2
-            AND type = 'ANNUAL_RENEWAL'
-            AND due_date = $3
-          `,
-          [status, business_id, next_renewal_date]
-        );
+        await conn.query(insertSql, [business_id, msg, next_renewal_date]);
       }
     }
 
