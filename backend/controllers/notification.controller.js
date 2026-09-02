@@ -2,22 +2,18 @@ const { pool } = require("../database/db");
 const { syncAnnualRenewals } = require("../cron/syncNotifications");
 
 exports.getNotifications = async (req, res) => {
-  const userId = req.user.id;
   try {
     const { rows } = await pool.query(
       `
       SELECT
         n.*,
-        bc.business_name,
-        CASE WHEN nv.user_id IS NOT NULL THEN true ELSE false END AS viewed
+        bc.business_name
       FROM notifications n
       JOIN business_clients bc ON n.business_id = bc.id
-      LEFT JOIN notification_views nv
-        ON nv.notification_id = n.id AND nv.user_id = $1
-      WHERE n.status = 'pending'
-      ORDER BY n.due_date ASC NULLS LAST, n.created_at DESC
-      `,
-      [userId]
+      ORDER BY
+        n.due_date DESC NULLS LAST,
+        n.created_at DESC
+      `
     );
 
     return res.status(200).json({ count: rows.length, data: rows });
