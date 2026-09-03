@@ -1,6 +1,6 @@
 const { pool } = require("../database/db");
 const { encrypt, sha256, decrypt } = require("../utils/crypto-utils");
-const { syncAnnualRenewals } = require("../cron/syncNotifications");
+const { syncAnnualRenewals, upsertPendingNotification } = require("../cron/syncNotifications");
 
 function nullify(v) {
   if (v === undefined || v === null) return null;
@@ -837,8 +837,10 @@ async function patchBusiness(req, res) {
 
     /* ================= TAX PROFILES ================= */
 
+    let annualRenewalTouched = false;
     if (Array.isArray(payload.taxProfiles)) {
       for (const tp of payload.taxProfiles) {
+        if (tp.tax_type === "ANNUAL_RENEWAL") annualRenewalTouched = true;
         // Build the update dynamically based on what fields are present
         const updateFields = [];
         const values = [id, tp.tax_type];
@@ -888,6 +890,61 @@ async function patchBusiness(req, res) {
       `,
           values,
         );
+      }
+    }
+
+    // Reconcile pending ANNUAL_RENEWAL notifications with the edited profile:
+    // a date change moves same-year pendings to the new date (no duplicates),
+    // unregistering/dateless removes stale pendings.
+    if (annualRenewalTouched) {
+      const profRes = await conn.query(
+        `SELECT start_date, registeredstatus
+         FROM business_tax_profiles
+         WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL'`,
+        [id]
+      );
+      const prof = profRes.rows[0];
+      if (!prof || !prof.registeredstatus || !prof.start_date) {
+        await conn.query(
+          `DELETE FROM notifications
+           WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
+          [id]
+        );
+      } else {
+        const bcRes = await conn.query(
+          `SELECT business_name FROM business_clients WHERE id = $1`,
+          [id]
+        );
+        const businessName = bcRes.rows[0]?.business_name || "Business";
+        const start = new Date(prof.start_date);
+        const pendRes = await conn.query(
+          `SELECT DISTINCT EXTRACT(YEAR FROM due_date)::int AS yr
+           FROM notifications
+           WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'
+             AND due_date IS NOT NULL`,
+          [id]
+        );
+        for (const r of pendRes.rows) {
+          const newDue = new Date(start);
+          newDue.setFullYear(Number(r.yr));
+          if (isNaN(newDue.getTime())) continue;
+          // Skip impossible dates (e.g. Feb 29 in a non-leap year)
+          if (newDue.getMonth() !== start.getMonth()) continue;
+          // Day-of semantics: a renewal pushed into the future hides its
+          // notification until the due day (sync recreates it then).
+          const futRes = await conn.query(`SELECT $1::date > CURRENT_DATE AS is_future`, [newDue]);
+          if (futRes.rows[0]?.is_future) {
+            await conn.query(
+              `DELETE FROM notifications
+               WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'
+                 AND due_date IS NOT NULL
+                 AND EXTRACT(YEAR FROM due_date)::int = $2`,
+              [id, Number(r.yr)]
+            );
+            continue;
+          }
+          await upsertPendingNotification(conn, id, businessName, newDue);
+        }
       }
     }
 
@@ -1290,6 +1347,22 @@ async function createBusinessBulk(req, res) {
 
 //Tax Record Controllers
 
+function deriveAnnualRenewalYear(taxYear, taxDate) {
+  if (taxYear !== undefined && taxYear !== null && taxYear !== "") {
+    const year = Number(taxYear);
+    if (Number.isInteger(year)) return year;
+  }
+
+  if (taxDate) {
+    const parsed = new Date(taxDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.getFullYear();
+    }
+  }
+
+  return null;
+}
+
 async function createTaxRecord(req, res) {
   const businessId = req.params.businessId;
   const {
@@ -1438,13 +1511,31 @@ async function createTaxRecord(req, res) {
       );
     }
     
-    // Auto-complete pending notifications if this is an ANNUAL_RENEWAL
+    // Auto-complete pending notifications for the filed ANNUAL_RENEWAL year only
     if (tax_type === 'ANNUAL_RENEWAL') {
-      await conn.query(
-        `UPDATE notifications SET status = 'completed' 
-         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
-        [businessId]
-      );
+      const filedYear = deriveAnnualRenewalYear(tax_year, tax_date);
+      if (filedYear !== null) {
+        await conn.query(
+          `UPDATE notifications
+           SET status = 'completed'
+           WHERE business_id = $1
+             AND type = 'ANNUAL_RENEWAL'
+             AND status = 'pending'
+             AND due_date IS NOT NULL
+             AND EXTRACT(YEAR FROM due_date)::int = $2`,
+          [businessId, filedYear]
+        );
+      }
+      // A filed renewal carries the next renewal date: keep the master
+      // profile in sync so future notifications use the updated date.
+      if (update_renewal) {
+        await conn.query(
+          `UPDATE business_tax_profiles
+           SET start_date = $2, updated_at = now()
+           WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL'`,
+          [businessId, update_renewal]
+        );
+      }
     }
 
 
@@ -1473,7 +1564,7 @@ async function patchTaxRecord(req, res) {
 
     const check = await conn.query(
       `
-      SELECT id
+      SELECT tax_type, business_id, tax_year, tax_date, update_renewal
       FROM business_tax_records
       WHERE id = $1 AND business_id = $2
       FOR UPDATE
@@ -1485,6 +1576,7 @@ async function patchTaxRecord(req, res) {
       await conn.query("ROLLBACK");
       return res.status(404).json({ error: "tax_record_not_found" });
     }
+    const oldRecord = check.rows[0];
 
     const sets = [];
     const vals = [];
@@ -1528,15 +1620,78 @@ async function patchTaxRecord(req, res) {
 
     // Auto-complete pending notifications if this is an ANNUAL_RENEWAL record
     const updatedRecord = await conn.query(
-      `SELECT tax_type, business_id FROM business_tax_records WHERE id = $1`,
+      `SELECT tax_type, business_id, tax_year, tax_date, update_renewal FROM business_tax_records WHERE id = $1`,
       [taxRecordId]
     );
     if (updatedRecord.rows.length && updatedRecord.rows[0].tax_type === 'ANNUAL_RENEWAL') {
-      await conn.query(
-        `UPDATE notifications SET status = 'completed'
-         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'`,
-        [updatedRecord.rows[0].business_id]
-      );
+      const next = updatedRecord.rows[0];
+      const oldYear = deriveAnnualRenewalYear(oldRecord.tax_year, oldRecord.tax_date);
+      const filedYear = deriveAnnualRenewalYear(next.tax_year, next.tax_date);
+
+      // Keep the master profile in sync when the renewal date is edited.
+      const oldRenewal = oldRecord.update_renewal
+        ? new Date(oldRecord.update_renewal).toISOString().slice(0, 10)
+        : null;
+      const newRenewal = next.update_renewal
+        ? new Date(next.update_renewal).toISOString().slice(0, 10)
+        : null;
+      if (newRenewal && newRenewal !== oldRenewal) {
+        await conn.query(
+          `UPDATE business_tax_profiles
+           SET start_date = $2, updated_at = now()
+           WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL'`,
+          [next.business_id, next.update_renewal]
+        );
+      }
+
+      // Filing moved to a different year: reopen the old year (only if no
+      // other filing still covers it and no pending already exists), so the
+      // old notification isn't lost and no duplicate is created.
+      if (oldYear !== null && filedYear !== null && oldYear !== filedYear) {
+        const remaining = await conn.query(
+          `SELECT 1 FROM business_tax_records
+           WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL' AND id <> $2
+             AND (tax_year = $3 OR (tax_year IS NULL AND EXTRACT(YEAR FROM tax_date)::int = $3))
+           LIMIT 1`,
+          [next.business_id, taxRecordId, oldYear]
+        );
+        if (remaining.rows.length === 0) {
+          const pendingExists = await conn.query(
+            `SELECT 1 FROM notifications
+             WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'
+               AND due_date IS NOT NULL
+               AND EXTRACT(YEAR FROM due_date)::int = $2
+             LIMIT 1`,
+            [next.business_id, oldYear]
+          );
+          if (pendingExists.rows.length === 0) {
+            await conn.query(
+              `UPDATE notifications SET status = 'pending', viewed = false
+               WHERE id = (
+                 SELECT id FROM notifications
+                 WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'completed'
+                   AND due_date IS NOT NULL
+                   AND EXTRACT(YEAR FROM due_date)::int = $2
+                 ORDER BY due_date DESC LIMIT 1
+               )`,
+              [next.business_id, oldYear]
+            );
+          }
+        }
+      }
+
+      if (filedYear !== null) {
+        await conn.query(
+          `UPDATE notifications
+           SET status = 'completed'
+           WHERE business_id = $1
+             AND type = 'ANNUAL_RENEWAL'
+             AND status = 'pending'
+             AND due_date IS NOT NULL
+             AND EXTRACT(YEAR FROM due_date)::int = $2`,
+          [next.business_id, filedYear]
+        );
+      }
     }
 
     await conn.query("COMMIT");
@@ -1563,7 +1718,7 @@ async function deleteTaxRecord(req, res) {
       `
       DELETE FROM business_tax_records
       WHERE id = $1 AND business_id = $2
-      RETURNING id, tax_type
+      RETURNING id, tax_type, tax_year, tax_date
       `,
       [taxRecordId, businessId],
     );
@@ -1572,14 +1727,51 @@ async function deleteTaxRecord(req, res) {
       return res.status(404).json({ error: "tax_record_not_found" });
     }
 
-    // If an annual renewal was deleted, revert its completed notification back to pending
-    // so the user is reminded to re-file
+    // If an annual renewal was deleted, revert its completed notification for that filing year
+    // back to pending so the user is reminded to re-file. Only when no other
+    // filing still covers the year and no pending already exists for it,
+    // otherwise deleting would stack duplicate notifications.
     if (result.rows[0].tax_type === 'ANNUAL_RENEWAL') {
-      await pool.query(
-        `UPDATE notifications SET status = 'pending', viewed = false
-         WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'completed'`,
-        [businessId]
+      const deletedYear = deriveAnnualRenewalYear(
+        result.rows[0].tax_year,
+        result.rows[0].tax_date
       );
+
+      if (deletedYear !== null) {
+        const remaining = await pool.query(
+          `SELECT 1 FROM business_tax_records
+           WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL'
+             AND (tax_year = $2 OR (tax_year IS NULL AND EXTRACT(YEAR FROM tax_date)::int = $2))
+           LIMIT 1`,
+          [businessId, deletedYear]
+        );
+        if (remaining.rows.length === 0) {
+          const pendingExists = await pool.query(
+            `SELECT 1 FROM notifications
+             WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'
+               AND due_date IS NOT NULL
+               AND EXTRACT(YEAR FROM due_date)::int = $2
+             LIMIT 1`,
+            [businessId, deletedYear]
+          );
+          if (pendingExists.rows.length === 0) {
+            await pool.query(
+              `UPDATE notifications
+               SET status = 'pending', viewed = false
+               WHERE id = (
+                 SELECT id FROM notifications
+                 WHERE business_id = $1
+                   AND type = 'ANNUAL_RENEWAL'
+                   AND status = 'completed'
+                   AND due_date IS NOT NULL
+                   AND EXTRACT(YEAR FROM due_date)::int = $2
+                 ORDER BY due_date DESC LIMIT 1
+               )`,
+              [businessId, deletedYear]
+            );
+          }
+        }
+      }
     }
 
     res.json({ success: true });

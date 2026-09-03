@@ -15,6 +15,7 @@ import AddPersonal from "./pages/AddPersonal";
 import AddBusiness from "./pages/AddBusiness";
 import EmptyLayout from "./layout/EmptyLayout";
 import SignIn from "./pages/SignIn";
+import Notifications from "./pages/Notifications";
 
 function App() {
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ function App() {
           <Route path="business/:id" element={<BusinessDetails />} />
           <Route path="users" element={<UserManagement />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         <Route element={<NoNavbarLayout />}>

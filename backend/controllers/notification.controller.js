@@ -14,8 +14,9 @@ exports.getNotifications = async (req, res) => {
       JOIN business_clients bc ON n.business_id = bc.id
       LEFT JOIN notification_views nv
         ON nv.notification_id = n.id AND nv.user_id = $1
-      WHERE n.status = 'pending'
-      ORDER BY n.due_date DESC NULLS LAST, n.created_at DESC
+      ORDER BY
+        CASE WHEN n.status = 'pending' THEN 0 ELSE 1 END,
+        n.due_date DESC NULLS LAST, n.created_at DESC
       `,
       [userId]
     );

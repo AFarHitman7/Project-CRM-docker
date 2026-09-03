@@ -53,32 +53,21 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const unreadCount = notifications.filter((n: any) => !n.viewed && n.status === 'pending').length;
-  const pendingNotifications = notifications.filter((n: any) => n.status === 'pending');
+  const pendingCount = notifications.filter((n: any) => n.status === "pending").length;
+  const pendingNotifications = notifications.filter((n: any) => n.status === "pending");
 
-  const toggleDropdown = async () => {
-    const nextOpen = !open;
-    setOpen(nextOpen);
-    if (nextOpen && unreadCount > 0) {
-      try {
-        const token = localStorage.getItem("token");
-        await fetch(`${API_URL}/api/notifications/viewed`, {
-          method: 'PATCH',
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setNotifications((prev: any[]) => prev.map((n: any) => ({...n, viewed: true})));
-      } catch (err) {
-        console.error("Failed to mark viewed");
-      }
-    }
+  const toggleDropdown = () => {
+    setOpen((prev) => !prev);
   };
 
   const handleRedirect = (businessId: string) => {
     setOpen(false);
     navigate(`/business/${businessId}`);
+  };
+
+  const handleViewAllNotifications = () => {
+    setOpen(false);
+    navigate("/notifications");
   };
 
   return (
@@ -93,28 +82,45 @@ const Navbar = () => {
         >
           <IoNotificationsOutline size="1.6rem" />
 
-          {unreadCount > 0 && (
-            <span className={styles.badge}>{unreadCount}</span>
+          {pendingCount > 0 && (
+            <span className={styles.badge}>{pendingCount}</span>
           )}
 
           {open && (
             <div className={styles.dropdown}>
-              {pendingNotifications.length === 0 && (
-                <p className={styles.empty}>No upcoming renewals</p>
-              )}
+              <div className={styles.dropdownHeader}>
+                <p className={styles.dropdownTitle}>Notifications</p>
+                <p className={styles.dropdownCount}>{pendingNotifications.length}</p>
+              </div>
 
-              {pendingNotifications.map((item: any) => (
-                <div
-                  key={item.id}
-                  className={styles.notificationItem}
-                  onClick={() => handleRedirect(item.business_id)}
+              <div className={styles.dropdownList}>
+                {pendingNotifications.length === 0 && (
+                  <p className={styles.empty}>No upcoming renewals</p>
+                )}
+
+                {pendingNotifications.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className={styles.notificationItem}
+                    onClick={() => handleRedirect(item.business_id)}
+                  >
+                    <p className={styles.title}>{item.business_name}</p>
+                    <p className={styles.sub}>
+                      {item.message || `Renewal due on ${item.due_date ? new Date(item.due_date).toLocaleDateString() : "—"}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.dropdownFooter}>
+                <button
+                  type="button"
+                  className={styles.viewAllButton}
+                  onClick={handleViewAllNotifications}
                 >
-                  <p className={styles.title}>{item.business_name}</p>
-                  <p className={styles.sub}>
-                    {item.message || `Renewal due on ${item.due_date ? new Date(item.due_date).toLocaleDateString() : "—"}`}
-                  </p>
-                </div>
-              ))}
+                  View all notifications
+                </button>
+              </div>
             </div>
           )}
         </div>

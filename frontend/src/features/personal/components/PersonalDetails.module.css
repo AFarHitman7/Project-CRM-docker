@@ -6,6 +6,7 @@
 
 .cardSection {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   align-items: flex-start;
   min-width: 0;
@@ -15,7 +16,7 @@
   display: flex;
   flex: 1 1 0;
   width: 50%;
-  min-width: 0;
+  min-width: 485px;
   flex-direction: column;
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
