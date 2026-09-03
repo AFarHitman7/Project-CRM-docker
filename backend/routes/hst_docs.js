@@ -9,6 +9,27 @@ const { hstDocsUploadDir } = require("../config/storage");
 
 const router = express.Router();
 
+// object_store_key values reach the filesystem, so they must never be able
+// to escape the upload directory. Stored keys are multer-generated
+// (`uuid.ext`); anything with separators, "..", absolute paths, or that
+// resolves outside the upload dir is rejected.
+function resolveStorePath(key) {
+  if (typeof key !== "string" || !key) return null;
+  if (key.includes("..") || key.includes("/") || key.includes("\\")) return null;
+  if (path.isAbsolute(key)) return null;
+  if (path.basename(key) !== key) return null;
+  const resolved = path.resolve(hstDocsUploadDir, key);
+  const base = path.resolve(hstDocsUploadDir) + path.sep;
+  if (!resolved.startsWith(base)) return null;
+  return resolved;
+}
+
+async function discardUploadedFile(req) {
+  if (req.file?.path) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+  }
+}
+
 router.post("/:taxRecordId", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "no_file" });
 
@@ -20,10 +41,12 @@ router.post("/:taxRecordId", upload.single("file"), async (req, res) => {
     .digest("hex");
 
   if (!clientId && !businessId) {
+    await discardUploadedFile(req);
     return res.status(400).json({ error: "owner_required" });
   }
 
   if (clientId && businessId) {
+    await discardUploadedFile(req);
     return res.status(400).json({ error: "ambiguous_owner" });
   }
 
@@ -76,7 +99,8 @@ async function deleteHstDoc(req, res) {
 
   if (!rows.length) return res.sendStatus(404);
 
-  const filePath = path.resolve(hstDocsUploadDir, rows[0].object_store_key);
+  const filePath = resolveStorePath(rows[0].object_store_key);
+  if (!filePath) return res.sendStatus(404);
 
   try {
     await fs.promises.unlink(filePath);
@@ -111,9 +135,15 @@ router.get("/file/:docId", async (req, res) => {
   if (!["admin", "auditor"].includes(req.user.role)) {
     return res.sendStatus(403);
   }
-  const filePath = path.resolve(hstDocsUploadDir, rows[0].object_store_key);
+  const filePath = resolveStorePath(rows[0].object_store_key);
+  if (!filePath) return res.sendStatus(404);
 
-  res.sendFile(filePath);
+  res.sendFile(filePath, (err) => {
+    if (err && !res.headersSent) {
+      res.sendStatus(err.code === "ENOENT" ? 404 : 500);
+    }
+  });
 });
 
 module.exports = router;
+module.exports.resolveStorePath = resolveStorePath;

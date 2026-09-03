@@ -296,7 +296,6 @@ exports.getBirthday = async (req, res) => {
     console.error("getBirthday error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 };

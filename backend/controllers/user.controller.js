@@ -26,7 +26,7 @@ exports.getProfile = async (req, res) => {
     return res.json(rows[0]);
   } catch (err) {
     console.error("Error fetching profile:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -57,7 +57,7 @@ exports.getAllUsers = async (req, res) => {
     return res.json(rows);
   } catch (err) {
     console.error("Error fetching users:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -101,7 +101,7 @@ exports.updateUser = async (req, res) => {
     return res.json(rows[0]);
   } catch (err) {
     console.error("Error updating user:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -142,7 +142,7 @@ exports.deleteUser = async (req, res) => {
     return res.json({ deleted: true, userid: rows[0].id });
   } catch (err) {
     console.error("Error deleting user:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -181,6 +181,6 @@ exports.resetUserPassword = async (req, res) => {
     return res.json({ message: "User password has been reset successfully" });
   } catch (err) {
     console.error("Error resetting password:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };

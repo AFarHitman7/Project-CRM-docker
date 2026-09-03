@@ -1,6 +1,14 @@
 // controllers/pClient.Controller.js
+const path = require("path");
 const { pool } = require("../database/db");
 const { encrypt, decrypt, sha256 } = require("../utils/crypto-utils");
+
+// Placeholder rows have no file on disk. The key is basename-stripped and
+// prefixed so it can never traverse or collide with a real uploaded file.
+function toPendingStoreKey(raw) {
+  const base = path.basename(String(raw || "")).slice(0, 200) || "attachment";
+  return `pending_${base}`;
+}
 
 const CLIENT_FIELDS = [
   "id",
@@ -184,7 +192,6 @@ async function listClients(req, res) {
     console.error("listClients error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -374,7 +381,6 @@ ORDER BY tr.tax_year DESC`,
     console.error("getClient error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -568,7 +574,6 @@ async function patchClient(req, res) {
     console.error("patchClient error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     clientConn.release();
@@ -827,7 +832,7 @@ async function createPersonal(req, res) {
       await clientConn.query(hstSql, [
         clientId,
         payload.attachment || null,
-        payload.attachment || null,
+        toPendingStoreKey(payload.attachment),
         createdById,
         now,
         payload.checksum || null,
@@ -870,7 +875,7 @@ async function createPersonal(req, res) {
     console.error("createPersonal error:", err);
     return res
       .status(500)
-      .json({ error: "server_error", details: err.message });
+      .json({ error: "server_error" });
   } finally {
     clientConn.release();
   }
@@ -1136,7 +1141,7 @@ async function createBulk(req, res) {
         await clientConn.query(hstSql, [
           clientId,
           pick(clientPayload, "attachment") || null,
-          pick(clientPayload, "attachment") || null,
+          toPendingStoreKey(pick(clientPayload, "attachment")),
           createdById,
           now,
           pick(clientPayload, "checksum") || null,
@@ -1317,7 +1322,6 @@ async function createSpouse(req, res) {
 
     return res.status(400).json({
       error: "create_spouse_failed",
-      details: err.message,
     });
   } finally {
     clientConn.release();
@@ -1395,7 +1399,7 @@ async function deleteClient(req, res) {
     console.error("deleteClient error:", err);
     return res
       .status(500)
-      .json({ error: "server_error", details: err.message });
+      .json({ error: "server_error" });
   } finally {
     conn.release();
   }
@@ -1460,7 +1464,6 @@ async function insertAddress(req, res) {
     console.error("insertAddress error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1497,7 +1500,6 @@ async function deleteAddress(req, res) {
     console.error("deleteAddress error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -1537,7 +1539,6 @@ async function insertNote(req, res) {
     console.error("insertNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1574,7 +1575,6 @@ async function deleteNote(req, res) {
     console.error("deleteNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -1622,7 +1622,6 @@ async function patchNote(req, res) {
     console.error("patchNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1731,7 +1730,6 @@ async function insertDependent(req, res) {
     console.error("insertDependent error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1791,7 +1789,6 @@ async function deleteDependent(req, res) {
     console.error("deleteDependent error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1870,7 +1867,6 @@ async function insertTaxRecord(req, res) {
     console.error("insertTaxRecord error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -1906,7 +1902,6 @@ async function deleteTaxRecord(req, res) {
     console.error("deleteTaxRecord error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -1997,7 +1992,6 @@ async function patchTaxRecord(req, res) {
     console.error("patchTaxRecord error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2091,7 +2085,6 @@ async function patchDependent(req, res) {
     console.error("patchDependent error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2100,6 +2093,7 @@ async function patchDependent(req, res) {
 
 // Export all functions
 module.exports = {
+  toPendingStoreKey,
   listClients,
   createPersonal,
   createSpouse,

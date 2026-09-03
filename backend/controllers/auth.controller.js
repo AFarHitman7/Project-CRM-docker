@@ -15,12 +15,15 @@ exports.register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await createUser(username, full_name, hashedPassword, role);
 
+    // Never leak password_hash even if the model changes its RETURNING list.
+    const { password_hash: _omit, ...safeUser } = newUser || {};
+
     return res
       .status(201)
-      .json({ message: "User registered successfully", user: newUser });
+      .json({ message: "User registered successfully", user: safeUser });
   } catch (err) {
     console.error("Error in registering user", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -52,6 +55,6 @@ exports.login = async (req, res) => {
     res.json({ message: "login successful", token });
   } catch (err) {
     console.error("Error in logging in user", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "server_error" });
   }
 };

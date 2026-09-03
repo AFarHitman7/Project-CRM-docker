@@ -6,7 +6,7 @@ const createUser = async (username, fullName, passwordHash, role) => {
     const sql = `
       INSERT INTO app_users (username, full_name, password_hash, role)
       VALUES ($1, $2, $3, $4)
-      RETURNING *;
+      RETURNING id, username, full_name, role, created_at;
     `;
     const params = [username, fullName, passwordHash, role || null];
     const { rows } = await pool.query(sql, params);

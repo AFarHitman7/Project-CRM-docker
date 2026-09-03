@@ -1,5 +1,6 @@
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import type { ReactNode } from "react";
 import { Toaster } from "react-hot-toast";
 import NotFound from "./notfound";
 import MainLayout from "./layout/MainLayout";
@@ -38,6 +39,17 @@ function App() {
     }
   }, [navigate]);
 
+  // Blocks protected UI from rendering without a live token. Re-evaluated
+  // on every navigation because it renders inside the matched route.
+  function RequireAuth({ children }: { children: ReactNode }) {
+    const location = useLocation();
+    const token = localStorage.getItem("token");
+    if (!token || isTokenExpired(token)) {
+      return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
+    }
+    return <>{children}</>;
+  }
+
   return (
     <>
       <Toaster
@@ -47,7 +59,14 @@ function App() {
         }}
       />
       <Routes>
-        <Route path="/" element={<MainLayout />}>
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <MainLayout />
+            </RequireAuth>
+          }
+        >
           <Route index element={<Home />} />
           <Route path="clients" element={<Clients />} />
           <Route path="personal/:id" element={<PersonalDetails />} />
@@ -60,8 +79,22 @@ function App() {
 
         <Route element={<NoNavbarLayout />}>
           <Route path="*" element={<NotFound />} />
-          <Route path="add_personal" element={<AddPersonal />} />
-          <Route path="add_business" element={<AddBusiness />} />
+          <Route
+            path="add_personal"
+            element={
+              <RequireAuth>
+                <AddPersonal />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="add_business"
+            element={
+              <RequireAuth>
+                <AddBusiness />
+              </RequireAuth>
+            }
+          />
         </Route>
 
         <Route path="/" element={<EmptyLayout />}>

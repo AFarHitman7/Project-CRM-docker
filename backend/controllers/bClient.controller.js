@@ -2,6 +2,17 @@ const { pool } = require("../database/db");
 const { encrypt, sha256, decrypt } = require("../utils/crypto-utils");
 const { syncAnnualRenewals, upsertPendingNotification } = require("../cron/syncNotifications");
 
+// Address keys are interpolated as SQL identifiers in patchBusiness, so
+// only these columns may pass through — everything else is ignored.
+const ADDRESS_COLUMNS = new Set([
+  "address_line1",
+  "address_line2",
+  "city",
+  "province",
+  "postal_code",
+  "country",
+]);
+
 function nullify(v) {
   if (v === undefined || v === null) return null;
   if (typeof v === "string" && v.trim() === "") return null;
@@ -764,6 +775,7 @@ async function patchBusiness(req, res) {
       const vals = [];
 
       for (const [k, v] of Object.entries(payload.primaryAddress)) {
+        if (!ADDRESS_COLUMNS.has(k)) continue;
         cols.push(`${k} = $${vals.length + 1}`);
         vals.push(v ?? null);
       }
@@ -799,6 +811,7 @@ async function patchBusiness(req, res) {
         const vals = [];
 
         for (const [k, v] of Object.entries(payload.mailingAddress)) {
+          if (!ADDRESS_COLUMNS.has(k)) continue;
           cols.push(`${k} = $${vals.length + 1}`);
           vals.push(v ?? null);
         }
@@ -1713,8 +1726,12 @@ async function patchTaxRecord(req, res) {
 async function deleteTaxRecord(req, res) {
   const { businessId, taxRecordId } = req.params;
 
+  const conn = await pool.connect();
+
   try {
-    const result = await pool.query(
+    await conn.query("BEGIN");
+
+    const result = await conn.query(
       `
       DELETE FROM business_tax_records
       WHERE id = $1 AND business_id = $2
@@ -1724,6 +1741,7 @@ async function deleteTaxRecord(req, res) {
     );
 
     if (!result.rowCount) {
+      await conn.query("ROLLBACK");
       return res.status(404).json({ error: "tax_record_not_found" });
     }
 
@@ -1738,7 +1756,7 @@ async function deleteTaxRecord(req, res) {
       );
 
       if (deletedYear !== null) {
-        const remaining = await pool.query(
+        const remaining = await conn.query(
           `SELECT 1 FROM business_tax_records
            WHERE business_id = $1 AND tax_type = 'ANNUAL_RENEWAL'
              AND (tax_year = $2 OR (tax_year IS NULL AND EXTRACT(YEAR FROM tax_date)::int = $2))
@@ -1746,7 +1764,7 @@ async function deleteTaxRecord(req, res) {
           [businessId, deletedYear]
         );
         if (remaining.rows.length === 0) {
-          const pendingExists = await pool.query(
+          const pendingExists = await conn.query(
             `SELECT 1 FROM notifications
              WHERE business_id = $1 AND type = 'ANNUAL_RENEWAL' AND status = 'pending'
                AND due_date IS NOT NULL
@@ -1755,7 +1773,7 @@ async function deleteTaxRecord(req, res) {
             [businessId, deletedYear]
           );
           if (pendingExists.rows.length === 0) {
-            await pool.query(
+            await conn.query(
               `UPDATE notifications
                SET status = 'pending', viewed = false
                WHERE id = (
@@ -1774,10 +1792,14 @@ async function deleteTaxRecord(req, res) {
       }
     }
 
+    await conn.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
+    await conn.query("ROLLBACK").catch(() => {});
     console.error("deleteBusinessTaxRecord:", err);
     res.status(500).json({ error: "server_error" });
+  } finally {
+    conn.release();
   }
 }
 
@@ -2015,7 +2037,6 @@ async function insertNote(req, res) {
     console.error("insertNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2052,7 +2073,6 @@ async function deleteNote(req, res) {
     console.error("deleteNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -2100,7 +2120,6 @@ async function patchNote(req, res) {
     console.error("patchNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2132,7 +2151,6 @@ async function getTaxNotes(req, res) {
     console.error("getTaxNotes error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
@@ -2175,7 +2193,6 @@ async function insertTaxNote(req, res) {
     console.error("insertTaxNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2223,7 +2240,6 @@ async function patchTaxNote(req, res) {
     console.error("patchTaxNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   } finally {
     conn.release();
@@ -2261,12 +2277,12 @@ async function deleteTaxNote(req, res) {
     console.error("deleteTaxNote error:", err);
     return res.status(500).json({
       error: "server_error",
-      details: err.message,
     });
   }
 }
 
 module.exports = {
+  ADDRESS_COLUMNS,
   listClients,
   createBusiness,
   getBusiness,
