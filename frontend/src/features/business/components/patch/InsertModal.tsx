@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import styles from "./InsertModal.module.css";
+import { getNextRenewalDate } from "../../utils/annualRenewal";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -76,27 +77,6 @@ function validateDateNotFuture(date: string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return selected <= today;
-}
-
-function computeNextRenewalDate(startDate?: string | null): Date | null {
-  if (!startDate) return null;
-  const d = new Date(startDate);
-  if (isNaN(d.getTime())) return null;
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const base = new Date(now.getFullYear(), 0, 1);
-  for (let i = 0; i < 366; i++) {
-    const y = base.getFullYear();
-    const dt = new Date(y, d.getMonth(), d.getDate());
-    dt.setHours(0, 0, 0, 0);
-    if (dt >= now) {
-      return dt;
-    }
-    base.setFullYear(y + 1);
-  }
-  return null;
 }
 
 export default function InsertBusinessResourceModal({
@@ -895,8 +875,9 @@ export default function InsertBusinessResourceModal({
                               value={
                                 activeProfile.start_date
                                   ? (() => {
-                                      const next = computeNextRenewalDate(
+                                      const next = getNextRenewalDate(
                                         activeProfile.start_date,
+                                        activeProfile.records,
                                       );
                                       return next
                                         ? next.toLocaleDateString("en-CA")
@@ -909,7 +890,7 @@ export default function InsertBusinessResourceModal({
                           </div>
 
                           <div className={styles.formField}>
-                            <label>Update Renewal Date</label>
+                            <label>Renewed Date</label>
                             <input
                               type="date"
                               value={form.updateRenewal}

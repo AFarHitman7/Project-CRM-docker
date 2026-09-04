@@ -327,7 +327,7 @@ export default function EditTaxModal({
               {/* Row 4: Annual Renewal Specific Date */}
               {isAnnualRenewal && (
                 <div className={styles.formField}>
-                  <label>Update Renewal</label>
+                  <label>Renewed Date</label>
                   <input type="date" {...register("updateRenewal")} />
                 </div>
               )}

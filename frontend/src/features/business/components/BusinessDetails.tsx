@@ -8,6 +8,7 @@ import InsertModal from "./patch/InsertModal";
 import EditTaxModal from "./patch/EditTaxModal";
 import FileViewModal from "./files/FileViewModal";
 import TaxNoteModal from "./patch/TaxNoteModal";
+import { getNextRenewalDate } from "../utils/annualRenewal";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -51,27 +52,6 @@ function formatDateTime(ts?: string) {
   const ss = String(d.getSeconds()).padStart(2, "0");
 
   return `${MM}/${DD}/${YYYY} ${HH}:${mm}:${ss}`;
-}
-
-function computeNextRenewalDate(startDate?: string | null): Date | null {
-  if (!startDate) return null;
-  const d = new Date(startDate);
-  if (isNaN(d.getTime())) return null;
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const base = new Date(now.getFullYear(), 0, 1);
-  for (let i = 0; i < 366; i++) {
-    const y = base.getFullYear();
-    const dt = new Date(y, d.getMonth(), d.getDate());
-    dt.setHours(0, 0, 0, 0);
-    if (dt >= now) {
-      return dt;
-    }
-    base.setFullYear(y + 1);
-  }
-  return null;
 }
 
 export default function BusinessDetails() {
@@ -439,7 +419,7 @@ export default function BusinessDetails() {
                     (p: any) => p.tax_type === "ANNUAL_RENEWAL",
                   );
                   if (!ar || !ar.registeredstatus) return "Not Registered";
-                  const next = computeNextRenewalDate(ar.start_date);
+                  const next = getNextRenewalDate(ar.start_date, ar.records);
                   if (!next) return "Registered";
                   return formatDate(next.toISOString());
                 })()}
@@ -639,9 +619,9 @@ export default function BusinessDetails() {
                                 {/* Slip Information - only for PAYROLL */}
                                 {tp.tax_type === "PAYROLL" && <th>Slips</th>}
 
-                                {/* Update Renewal - only for ANNUAL_RENEWAL */}
+                                {/* Renewed Date - only for ANNUAL_RENEWAL */}
                                 {tp.tax_type === "ANNUAL_RENEWAL" && (
-                                  <th>Renewal Date</th>
+                                  <th>Renewed Date</th>
                                 )}
 
                                 <th>Status</th>
